@@ -3,11 +3,18 @@
  * Call scheduleAllNotifications() whenever habits or daily reminder settings change.
  */
 
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useHabitStore } from '@/store/habitStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { i18n } from '@/i18n';
+import { notificationsUnsupported } from '@/lib/expoGoGuard';
+
+// expo-notifications throws on import on Android inside Expo Go (see expoGoGuard.ts),
+// so it must be required lazily rather than statically imported.
+const Notifications: typeof NotificationsType | null = notificationsUnsupported
+  ? null
+  : (require('expo-notifications') as typeof NotificationsType);
 
 /**
  * Keeps `notificationsEnabled` aligned with whether anything should be scheduled:
@@ -43,6 +50,7 @@ function parseTime(hhmm: string): { hour: number; minute: number } {
  */
 export async function scheduleAllNotifications(): Promise<void> {
   reconcileNotificationsEnabled();
+  if (!Notifications) return;
 
   try {
     const { notificationsEnabled } = useSettingsStore.getState();

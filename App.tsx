@@ -2,8 +2,7 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
-// Android LogBox filter for Expo Go runs first from index.ts (before this import side-effect).
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { PersistReadyGate } from './src/components/PersistReadyGate';
@@ -13,19 +12,25 @@ import { i18n, getDeviceLocale } from './src/i18n';
 import { useSettingsStore } from './src/store/settingsStore';
 import { useHabitStore } from './src/store/habitStore';
 import { scheduleAllNotifications } from './src/lib/notificationScheduler';
+import { notificationsUnsupported } from './src/lib/expoGoGuard';
 
 // Ensure i18n is initialized (side-effect import).
 void i18n;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// expo-notifications throws on import on Android inside Expo Go (see expoGoGuard.ts),
+// so it must be required lazily rather than statically imported.
+if (!notificationsUnsupported) {
+  const Notifications = require('expo-notifications') as typeof NotificationsType;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 /** Syncs persisted language (or device locale on first launch) with i18n. */
 function LanguageSync({ children }: { children: React.ReactNode }) {

@@ -10,12 +10,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { useTheme } from '@/context/ThemeContext';
 import { useSettingsStore } from '@/store/settingsStore';
 import { scheduleAllNotifications } from '@/lib/notificationScheduler';
+import { notificationsUnsupported } from '@/lib/expoGoGuard';
+
+// expo-notifications throws on import on Android inside Expo Go (see expoGoGuard.ts),
+// so it must be required lazily rather than statically imported.
+const Notifications: typeof NotificationsType | null = notificationsUnsupported
+  ? null
+  : (require('expo-notifications') as typeof NotificationsType);
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -61,6 +68,14 @@ export default function NotificationSettingsScreen() {
   }, [h, m]);
 
   const ensurePermission = async (): Promise<boolean> => {
+    if (!Notifications) {
+      Alert.alert(
+        t('notifications.disabledTitle'),
+        'Notifications require a development build on Android when running inside Expo Go.',
+      );
+      return false;
+    }
+
     try {
       const existing = await Notifications.getPermissionsAsync();
       let status = existing.status;
