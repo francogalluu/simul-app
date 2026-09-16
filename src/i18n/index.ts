@@ -1,5 +1,5 @@
 /**
- * i18n setup for Fovere (English + Spanish).
+ * i18n setup for Simul (English + Spanish).
  * Import this once at app entry (App.tsx). Initial language is set after
  * reading persisted settings or device locale.
  */

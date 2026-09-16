@@ -13,7 +13,7 @@
  *   1. Add react-native-mmkv back: `npm install react-native-mmkv`
  *   2. Replace the AsyncStorage block below with:
  *      import { createMMKV } from 'react-native-mmkv';
- *      const _mmkv = createMMKV({ id: 'fovere-store' });
+ *      const _mmkv = createMMKV({ id: 'simul-store' });
  *      export const appStorage: StateStorage = {
  *        getItem:    (key) => _mmkv.getString(key) ?? null,
  *        setItem:    (key, value) => _mmkv.set(key, value),

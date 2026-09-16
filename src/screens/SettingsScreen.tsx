@@ -7,25 +7,16 @@ import {
   ChevronRight,
   SlidersHorizontal,
   Target,
-  Trash2,
   Database,
   Download,
   HelpCircle,
   Moon,
   Languages,
-  Bell,
-  Clock,
   Smartphone,
   Calendar,
-  Shield,
-  FileText,
   Info,
-  BookOpen,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import type { RootStackParamList } from '@/navigation/types';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useHabitStore } from '@/store';
 import { useTheme } from '@/context/ThemeContext';
@@ -62,7 +53,6 @@ function buildHabitsCsv(habits: Habit[], entries: HabitEntry[], t: (key: string)
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const { t } = useTranslation();
 
@@ -73,8 +63,6 @@ export default function SettingsScreen() {
     strictScoreMode,    setStrictScoreMode,
     language,
     setLanguage,
-    dailyReminderEnabled,
-    dailyReminderTime,
   } = useSettingsStore();
 
   const handleWeekStartPress = () => {
@@ -101,10 +89,6 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleComingSoon = (feature: string) => {
-    Alert.alert(feature, t('settings.comingSoon'), [{ text: t('common.ok') }]);
-  };
-
   const handleExportToCsv = async () => {
     const { habits, entries } = useHabitStore.getState();
     const csv = buildHabitsCsv(habits, entries, t);
@@ -118,10 +102,6 @@ export default function SettingsScreen() {
       Alert.alert(t('settings.exportToCsv'), (err as Error)?.message ?? t('settings.exportError'), [{ text: t('common.ok') }]);
     }
   };
-
-  const reminderSummary = dailyReminderEnabled
-    ? formatTimeSummary(dailyReminderTime)
-    : t('settings.off');
 
   const languageDisplay = (language === 'es' ? t('settings.spanish') : t('settings.english'));
 
@@ -151,21 +131,6 @@ export default function SettingsScreen() {
             label={t('settings.language')}
             value={languageDisplay}
             onPress={handleLanguagePress}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={Bell}
-            label={t('settings.notifications')}
-            value={reminderSummary}
-            onPress={() => navigation.navigate('Notifications')}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={Clock}
-            label={t('settings.habitReminders')}
-            onPress={() => navigation.navigate('HabitReminders')}
             showChevron
             colors={colors}
           />
@@ -214,13 +179,6 @@ export default function SettingsScreen() {
             label={t('settings.exportToCsv')}
             onPress={handleExportToCsv}
             showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={Trash2}
-            label={t('settings.deletedHabits')}
-            onPress={() => navigation.navigate('DeletedHabits')}
-            showChevron
             last
             colors={colors}
           />
@@ -228,36 +186,7 @@ export default function SettingsScreen() {
 
         {/* ── About ───────────────────────────────────────────────────── */}
         <Section title={t('settings.about')} icon={HelpCircle} colors={colors}>
-          <SettingRow
-            icon={FileText}
-            label={t('settings.habitsAndScoring')}
-            onPress={() => navigation.navigate('HabitsScoring')}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow icon={Info} label={t('settings.version')} value="1.0.0" colors={colors} />
-          <SettingRow
-            icon={BookOpen}
-            label={t('settings.viewOnboarding')}
-            onPress={() => navigation.navigate('OnboardingWelcome')}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={Shield}
-            label={t('settings.privacyPolicy')}
-            onPress={() => navigation.navigate('PrivacyPolicy')}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={FileText}
-            label={t('settings.termsOfService')}
-            onPress={() => navigation.navigate('TermsOfService')}
-            showChevron
-            last
-            colors={colors}
-          />
+          <SettingRow icon={Info} label={t('settings.version')} value="1.0.0" last colors={colors} />
         </Section>
 
         <View style={{ height: 40 }} />
@@ -433,14 +362,3 @@ const s = StyleSheet.create({
     flexShrink: 1,
   },
 });
-
-function formatTimeSummary(hhmm: string): string {
-  const [hStr, mStr] = hhmm.split(':');
-  const h = Number.parseInt(hStr, 10);
-  const m = Number.parseInt(mStr, 10);
-  if (Number.isNaN(h) || Number.isNaN(m)) return '';
-  const ampm = h < 12 ? 'AM' : 'PM';
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  const mm = String(m).padStart(2, '0');
-  return `${h12}:${mm} ${ampm}`;
-}

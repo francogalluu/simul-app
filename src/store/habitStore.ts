@@ -319,7 +319,7 @@ export const useHabitStore = create<HabitState>()(
     }),
 
     {
-      name: 'fovere-habits',
+      name: 'simul-habits',
       storage: createJSONStorage(() => appStorage),
 
       // Do not persist selectedDate: app always opens on today.
