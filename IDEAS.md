@@ -71,6 +71,3 @@ GitHub-style consistency-at-a-glance grid — the natural visual centerpiece of 
 
 ### Matching couple-avatar framing
 Once both people have joined, a subtle shared visual treatment (linked rings, or the two avatar colors blending where they overlap) would reinforce "together" the same way the app's name does.
-
-### Custom line icons instead of emoji for habits
-Emoji rendering differs between iOS and Android. A small custom icon set (still colorful, still fun) would look more deliberate and consistent across platforms.
