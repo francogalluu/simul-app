@@ -2,7 +2,7 @@
 // the legacy `useTheme()` palette (that's only kept alive for ErrorBoundary).
 
 export const S = {
-  bg: '#F2F2F5',
+  bg: '#FAF6EE',
   card: '#FFFFFF',
   cardMuted: '#F7F6F9',
 

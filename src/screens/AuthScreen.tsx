@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/authStore';
 import { DevSignInRow } from '@/components/DevSignInRow';
+import { MeshBackground } from '@/components/MeshBackground';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -64,6 +65,7 @@ export default function AuthScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <MeshBackground />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
@@ -134,7 +136,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: S.bg,
+    backgroundColor: 'transparent',
   },
   scroll: {
     flexGrow: 1,

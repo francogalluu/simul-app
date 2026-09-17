@@ -11,6 +11,7 @@ import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
 import { TextField, PrimaryButton, ErrorText } from '@/components/FormControls';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
+import { MeshBackground } from '@/components/MeshBackground';
 
 /** Formats raw input as XXXX-XXXX using the invite-code alphabet. */
 const formatCode = (raw: string) => {
@@ -57,6 +58,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <MeshBackground />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{t('onboarding.title')}</Text>
@@ -143,7 +145,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: S.bg,
+    backgroundColor: 'transparent',
   },
   scroll: {
     flexGrow: 1,
