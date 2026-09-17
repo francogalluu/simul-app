@@ -1,16 +1,3 @@
-export {
-  useHabitStore,
-  selectActiveHabits,
-  selectArchivedHabits,
-  selectEntriesForDate,
-  selectEntriesInRange,
-  selectEntry,
-  selectEntryValue,
-  selectIsCompleted,
-} from './habitStore';
-
-
-export {
-  useSettingsStore,
-  type WeekStartDay,
-} from './settingsStore';
+export { useTasksStore, type Habit, type Completions } from './tasksStore';
+export { useGoalsStore, type Goal } from './goalsStore';
+export { useSettingsStore, type WeekStartDay } from './settingsStore';

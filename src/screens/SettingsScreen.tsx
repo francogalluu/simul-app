@@ -1,364 +1,242 @@
 import React from 'react';
-import {
-  View, Text, Switch, Pressable, ScrollView, StyleSheet, Alert, Share,
-} from 'react-native';
+import { View, Text, Image, Switch, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ChevronRight,
-  SlidersHorizontal,
-  Target,
-  Database,
-  Download,
-  HelpCircle,
-  Moon,
-  Languages,
-  Smartphone,
-  Calendar,
-  Info,
-} from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useHabitStore } from '@/store';
-import { useTheme } from '@/context/ThemeContext';
-import type { Palette } from '@/lib/theme';
+import { useTasksStore } from '@/store/tasksStore';
+import { useGoalsStore } from '@/store/goalsStore';
 import { i18n } from '@/i18n';
-import type { Habit, HabitEntry } from '@/types/habit';
-import { getHabitUnitLabel } from '@/lib/habitUnitLabel';
-
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function escapeCsvCell(value: string): string {
-  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
-}
-
-function buildHabitsCsv(habits: Habit[], entries: HabitEntry[], t: (key: string) => string): string {
-  const habitMap = new Map(habits.map(h => [h.id, h]));
-  const header = 'Habit,Date,Value,Unit,Target';
-  const rows = entries
-    .filter(e => habitMap.has(e.habitId))
-    .map(e => {
-      const h = habitMap.get(e.habitId)!;
-      return [
-        escapeCsvCell(h.name),
-        e.date,
-        String(e.value),
-        escapeCsvCell(getHabitUnitLabel(h, t)),
-        String(h.target ?? 1),
-      ].join(',');
-    });
-  return [header, ...rows].join('\n');
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+import { PEOPLE, type Person } from '@/lib/people';
+import { haptic } from '@/lib/haptics';
+import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 
 export default function SettingsScreen() {
-  const { colors } = useTheme();
   const { t } = useTranslation();
-
   const {
-    hapticFeedback,     setHapticFeedback,
-    weekStartsOn,       setWeekStartsOn,
-    darkMode,           setDarkMode,
-    strictScoreMode,    setStrictScoreMode,
-    language,
-    setLanguage,
+    hapticFeedback, setHapticFeedback,
+    weekStartsOn, setWeekStartsOn,
+    language, setLanguage,
+    perspective, setPerspective,
   } = useSettingsStore();
+  const resetTasks = useTasksStore((s) => s.resetToSample);
+  const clearTasks = useTasksStore((s) => s.clearAll);
+  const clearGoals = useGoalsStore((s) => s.clearAll);
 
-  const handleWeekStartPress = () => {
-    Alert.alert(
-      t('alerts.weekStartsOn'),
-      undefined,
-      [
-        { text: t('settings.sunday'),  onPress: () => setWeekStartsOn(0), style: 'default' },
-        { text: t('settings.monday'),  onPress: () => setWeekStartsOn(1), style: 'default' },
-        { text: t('common.cancel'),  style: 'cancel' },
-      ],
-    );
+  const pickWeekStart = () =>
+    Alert.alert(t('alerts.weekStartsOn'), undefined, [
+      { text: t('settings.sunday'), onPress: () => setWeekStartsOn(0) },
+      { text: t('settings.monday'), onPress: () => setWeekStartsOn(1) },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+
+  const pickLanguage = () =>
+    Alert.alert(t('settings.language'), undefined, [
+      { text: t('settings.english'), onPress: () => { setLanguage('en'); i18n.changeLanguage('en'); } },
+      { text: t('settings.spanish'), onPress: () => { setLanguage('es'); i18n.changeLanguage('es'); } },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+
+  const confirmReset = () =>
+    Alert.alert(t('settings.resetSample'), t('settings.resetSampleMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.ok'), onPress: () => { haptic.success(); resetTasks(); clearGoals(); } },
+    ]);
+
+  const confirmClear = () =>
+    Alert.alert(t('settings.clearAll'), t('settings.clearAllMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => { haptic.warning(); clearTasks(); clearGoals(); } },
+    ]);
+
+  const switchPerspective = (p: Person) => {
+    if (p === perspective) return;
+    haptic.medium();
+    setPerspective(p);
   };
-
-  const handleLanguagePress = () => {
-    Alert.alert(
-      t('settings.language'),
-      undefined,
-      [
-        { text: t('settings.english'), onPress: () => { setLanguage('en'); i18n.changeLanguage('en'); }, style: 'default' },
-        { text: t('settings.spanish'), onPress: () => { setLanguage('es'); i18n.changeLanguage('es'); }, style: 'default' },
-        { text: t('common.cancel'), style: 'cancel' },
-      ],
-    );
-  };
-
-  const handleExportToCsv = async () => {
-    const { habits, entries } = useHabitStore.getState();
-    const csv = buildHabitsCsv(habits, entries, t);
-    try {
-      await Share.share({
-        message: csv,
-        title: t('settings.exportToCsv'),
-      });
-    } catch (err) {
-      if ((err as { message?: string })?.message?.includes('cancel') || (err as { code?: string })?.code === 'ECANCELLED') return;
-      Alert.alert(t('settings.exportToCsv'), (err as Error)?.message ?? t('settings.exportError'), [{ text: t('common.ok') }]);
-    }
-  };
-
-  const languageDisplay = (language === 'es' ? t('settings.spanish') : t('settings.english'));
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.bgSecondary }]} edges={['top']}>
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <Text style={[s.title, { color: colors.text1 }]}>{t('settings.title')}</Text>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>{t('settings.title')}</Text>
 
-        {/* ── Preferences ─────────────────────────────────────────────── */}
-        <Section title={t('settings.preferences')} icon={SlidersHorizontal} colors={colors}>
-          <SettingRow
-            icon={Moon}
-            label={t('settings.darkMode')}
-            right={
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: colors.separatorLight, true: colors.teal }}
-                thumbColor={colors.white}
-              />
-            }
-            colors={colors}
-          />
-          <SettingRow
-            icon={Languages}
-            label={t('settings.language')}
-            value={languageDisplay}
-            onPress={handleLanguagePress}
-            showChevron
-            colors={colors}
-          />
-          <SettingRow
-            icon={Smartphone}
+        <Text style={styles.sectionLabel}>{t('settings.preview')}</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowLabel}>{t('settings.viewAs')}</Text>
+          <View style={styles.personRow}>
+            {(['A', 'S'] as Person[]).map((p) => {
+              const active = perspective === p;
+              return (
+                <Pressable key={p} onPress={() => switchPerspective(p)} style={[styles.personOption, active && styles.personOptionActive]}>
+                  <Image source={PEOPLE[p].avatar} style={[styles.personAvatar, active && { borderColor: '#FFFFFF' }]} />
+                  <Text style={[styles.personName, active && styles.personNameActive]}>{PEOPLE[p].name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.hint}>{t('settings.viewAsHint')}</Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>{t('settings.preferences')}</Text>
+        <View style={styles.card}>
+          <Row label={t('settings.language')} value={language === 'es' ? t('settings.spanish') : t('settings.english')} onPress={pickLanguage} />
+          <Divider />
+          <Row
             label={t('settings.hapticFeedback')}
             right={
               <Switch
                 value={hapticFeedback}
                 onValueChange={setHapticFeedback}
-                trackColor={{ false: colors.separatorLight, true: colors.teal }}
-                thumbColor={colors.white}
+                trackColor={{ false: S.line, true: S.accent }}
+                thumbColor="#FFFFFF"
               />
             }
-            colors={colors}
           />
-          <SettingRow
-            icon={Target}
-            label={t('settings.strictScoreMode')}
-            right={
-              <Switch
-                value={strictScoreMode}
-                onValueChange={setStrictScoreMode}
-                trackColor={{ false: colors.separatorLight, true: colors.teal }}
-                thumbColor={colors.white}
-              />
-            }
-            footerText={t('settings.strictScoreModeDescription')}
-            colors={colors}
-          />
-          <SettingRow
-            icon={Calendar}
-            label={t('settings.weekStartsOn')}
-            value={weekStartsOn === 0 ? t('settings.sunday') : t('settings.monday')}
-            onPress={handleWeekStartPress}
-            showChevron
-            last
-            colors={colors}
-          />
-        </Section>
+          <Divider />
+          <Row label={t('settings.weekStartsOn')} value={weekStartsOn === 0 ? t('settings.sunday') : t('settings.monday')} onPress={pickWeekStart} last />
+        </View>
 
-        {/* ── Data ────────────────────────────────────────────────────── */}
-        <Section title={t('settings.data')} icon={Database} colors={colors}>
-          <SettingRow
-            icon={Download}
-            label={t('settings.exportToCsv')}
-            onPress={handleExportToCsv}
-            showChevron
-            last
-            colors={colors}
-          />
-        </Section>
+        <Text style={styles.sectionLabel}>{t('settings.data')}</Text>
+        <View style={styles.card}>
+          <Row label={t('settings.resetSample')} onPress={confirmReset} />
+          <Divider />
+          <Row label={t('settings.clearAll')} onPress={confirmClear} danger last />
+        </View>
 
-        {/* ── About ───────────────────────────────────────────────────── */}
-        <Section title={t('settings.about')} icon={HelpCircle} colors={colors}>
-          <SettingRow icon={Info} label={t('settings.version')} value="1.0.0" last colors={colors} />
-        </Section>
-
-        <View style={{ height: 40 }} />
+        <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
+        <View style={styles.card}>
+          <Row label={t('settings.version')} value="1.0.0" last />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-type LucideIcon = typeof ChevronRight;
-
-function Section({
-  title,
-  icon: Icon,
-  children,
-  colors,
-}: {
-  title: string;
-  icon: LucideIcon;
-  children: React.ReactNode;
-  colors: Palette;
-}) {
-  return (
-    <View style={s.section}>
-      <View style={s.sectionTitleRow}>
-        <Icon size={16} color={colors.text2} strokeWidth={2} style={s.sectionIcon} />
-        <Text style={[s.sectionTitle, { color: colors.text2 }]}>{title}</Text>
-      </View>
-      <View style={[s.sectionCard, { backgroundColor: colors.bgCard }]}>{children}</View>
-    </View>
-  );
-}
-
-function SettingRow({
-  icon: Icon,
+function Row({
   label,
   value,
   right,
   onPress,
-  showChevron = false,
-  last = false,
-  footerText,
-  colors,
+  danger,
+  last,
 }: {
-  icon?: LucideIcon;
   label: string;
   value?: string;
   right?: React.ReactNode;
   onPress?: () => void;
-  showChevron?: boolean;
+  danger?: boolean;
   last?: boolean;
-  /** Secondary copy shown under the row (e.g. setting explanation). */
-  footerText?: string;
-  colors: Palette;
 }) {
-  const footerInsetLeft = Icon ? 16 + 20 + 12 : 16;
-
-  const row = (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [
-        s.row,
-        footerText ? s.rowWithFooter : s.rowPadVertical,
-        { backgroundColor: colors.bgCard },
-        !footerText && !last && [s.rowBorder, { borderBottomColor: colors.separator }],
-        pressed && onPress && { backgroundColor: colors.bgSecondary },
-      ]}
-    >
-      <View style={s.rowLeft}>
-        {Icon ? (
-          <Icon size={20} color={colors.text2} strokeWidth={2} style={s.rowIcon} />
-        ) : null}
-        <Text style={[s.rowLabel, { color: colors.text1 }]}>{label}</Text>
-      </View>
-      <View style={s.rowRight}>
-        {value ? <Text style={[s.rowValue, { color: colors.text4 }]}>{value}</Text> : null}
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [styles.row, pressed && onPress && { opacity: 0.6 }]}>
+      <Text style={[styles.rowLabel, danger && { color: S.danger }]}>{label}</Text>
+      <View style={styles.rowRight}>
+        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
         {right ?? null}
-        {showChevron && !right ? (
-          <ChevronRight size={20} color={colors.chevron} strokeWidth={2.5} />
-        ) : null}
+        {onPress && !right ? <ChevronRight size={18} color={S.muted} strokeWidth={2.4} /> : null}
       </View>
     </Pressable>
   );
-
-  if (footerText) {
-    return (
-      <View
-        style={[
-          { backgroundColor: colors.bgCard },
-          !last && [s.rowBorder, { borderBottomColor: colors.separator }],
-        ]}
-      >
-        {row}
-        <View style={[s.rowFooterBlock, { paddingLeft: footerInsetLeft }]}>
-          <Text style={[s.rowFooter, { color: colors.text4 }]}>{footerText}</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return row;
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+function Divider() {
+  return <View style={styles.divider} />;
+}
 
-const s = StyleSheet.create({
-  safe:   { flex: 1 },
-  scroll: { paddingBottom: 20 },
-
-  title: {
-    fontSize: 34, fontWeight: '700',
-    letterSpacing: -0.68, paddingHorizontal: 24,
-    paddingTop: 16, paddingBottom: 24,
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: S.bg,
   },
-
-  section:        { marginBottom: 32 },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+  scroll: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingBottom: 32,
+  },
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    color: S.ink900,
+    marginTop: 14,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: S.tertiary,
+    marginTop: 22,
     marginBottom: 10,
   },
-  sectionIcon:     { marginRight: 6 },
-  sectionTitle: {
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+  card: {
+    backgroundColor: S.card,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    ...cardShadow,
   },
-  sectionCard: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  rowPadVertical: {
     paddingVertical: 14,
+    gap: 12,
   },
-  rowWithFooter: {
-    paddingTop: 14,
-    paddingBottom: 6,
+  rowLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: S.ink900,
+    flexShrink: 1,
   },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowLeft: {
+  rowRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  rowValue: {
+    fontSize: 14,
+    color: S.tertiary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: S.lineSoft,
+  },
+  personRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  personOption: {
     flex: 1,
-    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: S.bg,
+    borderRadius: 14,
+    padding: 10,
   },
-  rowIcon: { marginRight: 12 },
-  rowLabel: { fontSize: 17, flex: 1 },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowValue: { fontSize: 17 },
-  rowFooterBlock: {
-    paddingRight: 16,
-    paddingTop: 2,
-    paddingBottom: 14,
-    maxWidth: '100%',
+  personOptionActive: {
+    backgroundColor: S.accent,
   },
-  rowFooter: {
-    fontSize: 13,
-    lineHeight: 20,
-    letterSpacing: -0.1,
-    flexShrink: 1,
+  personAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  personName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: S.ink900,
+  },
+  personNameActive: {
+    color: '#FFFFFF',
+  },
+  hint: {
+    marginTop: 12,
+    marginBottom: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    color: S.tertiary,
   },
 });

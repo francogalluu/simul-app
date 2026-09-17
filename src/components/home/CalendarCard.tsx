@@ -1,0 +1,264 @@
+import React, { useMemo } from 'react';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
+import { format } from 'date-fns';
+import { getDateLocale, getWeekDates, isFuture, today } from '@/lib/dates';
+import { PEOPLE } from '@/lib/people';
+import { summarizeDay } from '@/lib/streaks';
+import { S, fonts, cardShadow } from '@/lib/simulTheme';
+import type { WeekStartDay } from '@/store/settingsStore';
+import type { Completions, Habit } from '@/store/tasksStore';
+import { LightningIcon } from './HomeTopBar';
+
+const RING_RADIUS = 15;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+export function CalendarCard({
+  selectedDate,
+  weekDates,
+  togetherStreak,
+  habits,
+  completions,
+  onSelectDate,
+}: {
+  selectedDate: string;
+  weekDates: string[];
+  togetherStreak: number;
+  habits: Habit[];
+  completions: Completions;
+  onSelectDate: (date: string) => void;
+}) {
+  const t = today();
+  const selected = new Date(selectedDate + 'T00:00:00');
+  const locale = getDateLocale();
+
+  const days = useMemo(
+    () =>
+      weekDates.map((date) => {
+        const d = new Date(date + 'T00:00:00');
+        return {
+          date,
+          label: format(d, 'EEEEE', { locale }),
+          num: d.getDate(),
+          isSelected: date === selectedDate,
+          isToday: date === t,
+          future: isFuture(date),
+          ...summarizeDay(habits, completions, date),
+        };
+      }),
+    [weekDates, selectedDate, habits, completions, t, locale],
+  );
+
+  const title = selectedDate === t ? 'Today' : format(selected, 'EEEE', { locale });
+  const subtitle = format(selected, 'MMMM yyyy', { locale });
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <View style={styles.avatarNameRow}>
+          <View style={styles.avatarStack}>
+            <Image source={PEOPLE.A.avatar} style={[styles.avatar, { left: 0 }]} />
+            <Image source={PEOPLE.S.avatar} style={[styles.avatar, { left: 18 }]} />
+          </View>
+          <Text style={styles.coupleName}>{PEOPLE.A.name} &amp; {PEOPLE.S.name}</Text>
+        </View>
+        <View style={styles.streakPill}>
+          <LightningIcon size={14} />
+          <Text style={styles.streakText}>
+            {togetherStreak} {togetherStreak === 1 ? 'Day' : 'Days'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.calHeaderRow}>
+        <Text style={styles.calTitle}>{title}</Text>
+        <Text style={styles.calMonth}>{subtitle}</Text>
+      </View>
+
+      <View style={styles.stripRow}>
+        {days.map((d) => {
+          const filled = d.full;
+          const numColor = filled ? '#FFFFFF' : d.isSelected ? S.ink900 : d.future ? S.line : S.muted;
+          return (
+            <Pressable key={d.date} onPress={() => onSelectDate(d.date)} style={styles.dayCol} hitSlop={4}>
+              <Text style={[styles.dayLabel, { color: d.isToday ? S.accent : d.isSelected ? S.ink700 : S.muted }]}>
+                {d.label}
+              </Text>
+              <View style={styles.ringWrap}>
+                <View
+                  style={[
+                    styles.pill,
+                    { backgroundColor: filled ? S.accent : d.isSelected ? S.lineSoft : 'transparent' },
+                  ]}
+                />
+                {!filled && (
+                  <Svg width={36} height={36} style={styles.ringSvg}>
+                    <Circle cx={18} cy={18} r={RING_RADIUS} fill="none" stroke={S.line} strokeWidth={2.5} />
+                    {d.pct > 0 && (
+                      <Circle
+                        cx={18}
+                        cy={18}
+                        r={RING_RADIUS}
+                        fill="none"
+                        stroke={S.accent}
+                        strokeWidth={2.5}
+                        strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+                        strokeDashoffset={RING_CIRCUMFERENCE * (1 - d.pct)}
+                        strokeLinecap="round"
+                      />
+                    )}
+                  </Svg>
+                )}
+                <View style={styles.numWrap}>
+                  <Text
+                    style={[
+                      styles.num,
+                      { color: numColor, fontFamily: d.isSelected || filled ? fonts.bold : fonts.regular },
+                    ]}
+                  >
+                    {d.num}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.dotsRow}>
+                <Dot done={d.aDone} future={d.future} color={PEOPLE.A.color} />
+                <Dot done={d.bDone} future={d.future} color={PEOPLE.S.color} />
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function Dot({ done, future, color }: { done: boolean; future: boolean; color: string }) {
+  if (future) return <View style={[styles.dot, { borderColor: S.line, backgroundColor: 'transparent' }]} />;
+  return <View style={[styles.dot, { borderColor: color, backgroundColor: done ? color : 'transparent' }]} />;
+}
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 20,
+    backgroundColor: S.card,
+    borderRadius: 20,
+    padding: 18,
+    ...cardShadow,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  avatarNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarStack: {
+    width: 52,
+    height: 34,
+  },
+  avatar: {
+    position: 'absolute',
+    top: 0,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  coupleName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: S.ink900,
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    ...cardShadow,
+  },
+  streakText: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: S.ink900,
+  },
+  calHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: 18,
+  },
+  calTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    color: S.ink900,
+    textTransform: 'capitalize',
+  },
+  calMonth: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: S.tertiary,
+  },
+  stripRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  dayCol: {
+    alignItems: 'center',
+    gap: 5,
+  },
+  dayLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  ringWrap: {
+    width: 36,
+    height: 36,
+  },
+  pill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 18,
+  },
+  ringSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    transform: [{ rotate: '-90deg' }],
+  },
+  numWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  num: {
+    fontSize: 15,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    borderWidth: 1.2,
+  },
+});

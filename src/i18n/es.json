@@ -1,8 +1,8 @@
 {
   "errorBoundary": {
     "title": "Algo salió mal",
-    "message": "La app tuvo un error inesperado. Puedes intentar de nuevo o reiniciar la app.",
-    "tryAgain": "Intentar de nuevo"
+    "message": "La app encontró un error inesperado. Probá de nuevo y, si sigue pasando, reiniciá la app.",
+    "tryAgain": "Reintentar"
   },
   "common": {
     "back": "Atrás",
@@ -16,31 +16,34 @@
     "edit": "Editar",
     "pause": "Pausar",
     "resume": "Reanudar",
-    "done": "Hecho",
+    "done": "Listo",
     "undo": "Deshacer"
   },
   "tabs": {
     "home": "Inicio",
+    "goals": "Metas",
     "settings": "Ajustes"
   },
   "settings": {
     "title": "Ajustes",
     "preferences": "Preferencias",
-    "darkMode": "Modo oscuro",
     "language": "Idioma",
-    "hapticFeedback": "Háptica",
-    "strictScoreMode": "Modo Estricto",
-    "strictScoreModeDescription": "On: solo cuentan los hábitos completados.\nOff: el progreso parcial también cuenta.",
-    "weekStartsOn": "Inicio de semana",
+    "hapticFeedback": "Vibración",
+    "weekStartsOn": "La semana empieza el",
     "sunday": "Domingo",
     "monday": "Lunes",
-    "data": "Datos",
-    "exportToCsv": "Exportar CSV",
-    "exportError": "Error al exportar",
-    "about": "Acerca de",
-    "version": "Versión",
     "english": "English",
-    "spanish": "Español"
+    "spanish": "Español",
+    "preview": "Vista previa",
+    "viewAs": "Ver la app como",
+    "viewAsHint": "Por ahora hay una sola cuenta — cambiá de lado para ver lo que ve tu pareja, aceptar invitaciones y completar hábitos compartidos desde su lado.",
+    "data": "Datos",
+    "resetSample": "Volver a los datos de ejemplo",
+    "resetSampleMessage": "Reemplaza todos los hábitos, completados y metas por el set de demo.",
+    "clearAll": "Borrar todo",
+    "clearAllMessage": "Elimina todos los hábitos, completados y metas de este dispositivo. No se puede deshacer.",
+    "about": "Acerca de",
+    "version": "Versión"
   },
   "alerts": {
     "weekStartsOn": "La semana empieza el"

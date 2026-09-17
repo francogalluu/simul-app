@@ -6,26 +6,26 @@ Running list of decisions made, work deferred, and things not to forget. Update 
 
 Renamed so far: `app.json` (name/slug/bundle id), `package.json` name, `eas.json` (dropped Fovere's App Store Connect app id + EAS project id since those belong to that app, not this one).
 
-Still says "Fovere" and needs updating once we're back in app-code mode:
-- `src/i18n/en.json` / `es.json` — home title, notification strings, onboarding `welcomeDefinition` ("(v.) to cherish and nurture" → something for "simul"), privacy policy + terms of service body text
-- `src/screens/onboarding/OnboardingWelcome.tsx` — hardcoded "Fovere" title text
-- `src/store/habitStore.ts` / `settingsStore.ts` — persisted storage keys `fovere-habits` / `fovere-settings`
-- `src/lib/tokens.ts` — stray comment mentioning Fovere
-- `src/i18n/index.ts` — stray comment mentioning Fovere
-- Contact email placeholder `fovereapp@gmail.com` in `PrivacyPolicyScreen.tsx` / `TermsOfServiceScreen.tsx` — needs a real address for Simul, not guessed
-- Asset filenames still say Fovere: `assets/Fovere Icon.png`, `src/__tests__/Fovere Logo.png` — also means the actual app icon/splash are still Fovere's, will need new art at some point
-- No EAS project / App Store Connect app exists yet for Simul — will need `eas init` (or equivalent) and a new App Store Connect record before any real build/submit
+All Fovere code, screens, i18n strings and storage keys are gone (see git history if anything's ever needed). What's left:
+- `assets/icon.png` / `assets/Splash.png` are still Fovere's teal "F(v.)" artwork — needs real Simul art; the splash screen shows it on every launch.
+- No EAS project / App Store Connect app exists yet for Simul — will need `eas init` (or equivalent) and a new App Store Connect record before any real build/submit.
+- Privacy policy / terms screens were deleted with the rest; they'll need writing fresh (with a real contact address) before any store submission.
 
-## Product decisions needed before backend wiring
+## Current app shape (all local, no backend)
 
-The current screens (from Fovere) are single-user. Before wiring sync, need to decide what "shared" actually looks like on screen:
-- Joint calendar/grid (both people's tasks visible together, like the Sprout reference artifact) vs. each person's own list with shared visibility?
-- Per-task ownership (color/avatar per person) — confirmed we want this conceptually, not yet designed in UI
-- What happens to Fovere's existing solo features that don't make sense for two people (streaks computed per-person vs per-pair, analytics screens, etc.)
+Two people are hardcoded: `'A'` = Franco, `'S'` = Mora (`src/lib/people.ts`, photos in `src/assets/images/couple/`). There's one account and no sync, so **"Mora's side" is simulated**: Settings → Preview → "View the app as" flips `settingsStore.perspective` and every screen re-renders from her side (her mailbox, her checkboxes, her streak). That's how the invite/accept flow and shared completion get demoed on one phone.
+
+Data model (`src/store/tasksStore.ts`, persisted to AsyncStorage as `simul-tasks`):
+- `habits[]` — `owner: 'A' | 'S' | 'both'`, `status: 'active' | 'pending'`, `createdAt`, and for invites `requestedBy`. A shared habit starts as `pending` + `requestedBy` = sender; the other person sees it in the Mailbox and Accept flips it to `active`.
+- `completions[date][habitId] = { A?: true, S?: true }` — per person, per day. A shared habit only counts as done for a day when **both** are true; the Home row shows "waiting for X" / "X finished — your turn" in between.
+- Streaks (`src/lib/streaks.ts`) are computed from that, not stored. Achievements (`src/lib/achievements.ts`) are computed the same way, including the secret ones.
+- `goalsStore.ts` (`simul-goals`) — long-term goals, separate from habits.
+- First launch seeds sample habits + ~a week of history so streaks/badges aren't all zero; Settings → Data can reset to sample or clear everything (that's how to see the empty states).
 
 Decided already:
 - Auth: magic link (email), via Supabase Auth
 - Pairing: invite code (one person creates, other joins with a 6-character code)
+- When the backend lands, `perspective` goes away — the signed-in user *is* `me`, and the partner is whoever else is in the household.
 
 ## Backend (provisioned, not yet wired into the app)
 
@@ -38,7 +38,7 @@ Not done yet — deliberately deferred until the UI/product shape above is settl
 - `src/lib/supabase.ts` client setup
 - `.env` / `.env.example` with project URL + anon key
 - Magic-link sign-in screen + create/join-household onboarding screens
-- Swapping `habitStore.ts` / `settingsStore.ts` from AsyncStorage-only to Supabase-backed + realtime subscriptions
+- Swapping `tasksStore.ts` / `goalsStore.ts` from AsyncStorage-only to Supabase-backed + realtime subscriptions (the schema's `tasks`/`completions` tables map onto the local shape almost 1:1)
 - Auth gate in navigation (`App.tsx` / `RootNavigator`)
 
 ## Dev environment — running the app

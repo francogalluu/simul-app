@@ -1,7 +1,7 @@
 {
   "errorBoundary": {
     "title": "Something went wrong",
-    "message": "The app hit an unexpected error. You can try again or restart the app.",
+    "message": "The app hit an unexpected error. Try again, and if it keeps happening, restart the app.",
     "tryAgain": "Try again"
   },
   "common": {
@@ -21,28 +21,31 @@
   },
   "tabs": {
     "home": "Home",
+    "goals": "Goals",
     "settings": "Settings"
   },
   "settings": {
     "title": "Settings",
     "preferences": "Preferences",
-    "darkMode": "Dark mode",
     "language": "Language",
-    "hapticFeedback": "Haptic Feedback",
-    "strictScoreMode": "Strict score mode",
-    "strictScoreModeDescription": "On: only fully completed habits count.\nOff: partial progress counts too.",
-    "weekStartsOn": "Week Starts On",
+    "hapticFeedback": "Haptic feedback",
+    "weekStartsOn": "Week starts on",
     "sunday": "Sunday",
     "monday": "Monday",
-    "data": "Data",
-    "exportToCsv": "Export to CSV",
-    "exportError": "Export failed",
-    "about": "About",
-    "version": "Version",
     "english": "English",
-    "spanish": "Español"
+    "spanish": "Español",
+    "preview": "Preview",
+    "viewAs": "View the app as",
+    "viewAsHint": "There's only one account for now — switch sides to see what your partner sees, accept invites, and complete shared habits from their side.",
+    "data": "Data",
+    "resetSample": "Reset to sample data",
+    "resetSampleMessage": "This replaces all habits, completions and goals with the demo set.",
+    "clearAll": "Clear everything",
+    "clearAllMessage": "Deletes every habit, completion and goal on this device. This can't be undone.",
+    "about": "About",
+    "version": "Version"
   },
   "alerts": {
-    "weekStartsOn": "Week Starts On"
+    "weekStartsOn": "Week starts on"
   }
 }

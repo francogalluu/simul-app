@@ -2,66 +2,63 @@ import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useTheme } from '@/context/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import { Plus } from 'lucide-react-native';
+import { S } from '@/lib/simulTheme';
+import { haptic } from '@/lib/haptics';
+import type { RootStackParamList } from './types';
 
 const TAB_BAR_HEIGHT = 56;
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const tabBarBg = isDark ? colors.bgCard : '#FFFFFF';
+  const rootNavigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const addIndex = state.routes.length - 1; // slot the Add button in before the last tab (Settings)
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: tabBarBg,
-          borderTopColor: colors.separator,
-          paddingBottom: insets.bottom,
-        },
-      ]}
-    >
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.tabRow}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
+          const color = isFocused ? S.accentDeep : S.muted;
 
           const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
+            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
           return (
-            <Pressable
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabItem}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-            >
-              {options.tabBarIcon?.({
-                focused: isFocused,
-                color: isFocused ? colors.teal : colors.text4,
-                size: 24,
-              })}
-              <Text
-                style={[
-                  styles.tabLabel,
-                  { color: isFocused ? colors.teal : colors.text4 },
-                ]}
+            <React.Fragment key={route.key}>
+              {index === addIndex && (
+                <Pressable
+                  onPress={() => {
+                    haptic.tap();
+                    rootNavigation.navigate('AddHabit');
+                  }}
+                  style={styles.tabItem}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add habit"
+                >
+                  <View style={styles.addCircle}>
+                    <Plus color="#FFFFFF" size={22} strokeWidth={2.6} />
+                  </View>
+                  <Text style={[styles.tabLabel, { color: S.muted }]}>Add</Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={onPress}
+                style={styles.tabItem}
+                accessibilityRole="button"
+                accessibilityState={isFocused ? { selected: true } : {}}
               >
-                {typeof options.tabBarLabel === 'string'
-                  ? options.tabBarLabel
-                  : route.name}
-              </Text>
-            </Pressable>
+                {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
+                <Text style={[styles.tabLabel, { color }]}>
+                  {typeof options.tabBarLabel === 'string' ? options.tabBarLabel : route.name}
+                </Text>
+              </Pressable>
+            </React.Fragment>
           );
         })}
       </View>
@@ -71,7 +68,9 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: S.card,
     borderTopWidth: 1,
+    borderTopColor: S.lineSoft,
   },
   tabRow: {
     flexDirection: 'row',
@@ -87,6 +86,14 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  addCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: S.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
