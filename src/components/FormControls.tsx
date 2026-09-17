@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, type TextInputProps } from 'react-native';
+import { View, TextInput, Pressable, ActivityIndicator, StyleSheet, type TextInputProps } from 'react-native';
+import { Text } from '@/components/AppText';
 import { S, softShadow } from '@/lib/simulTheme';
 
 export const TextField = forwardRef<TextInput, TextInputProps & { label: string }>(function TextField(

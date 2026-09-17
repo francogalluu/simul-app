@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
+import { View, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
+import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';

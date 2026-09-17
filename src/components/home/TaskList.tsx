@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/components/AppText';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';

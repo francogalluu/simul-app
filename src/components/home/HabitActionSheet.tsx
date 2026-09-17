@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, Modal, StyleSheet, Alert } from 'react-native';
+import { View, Pressable, Modal, StyleSheet, Alert } from 'react-native';
+import { Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { S, fonts } from '@/lib/simulTheme';

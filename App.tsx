@@ -4,6 +4,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { useFonts, Lora_400Regular, Lora_700Bold } from '@expo-google-fonts/lora';
+import {
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+} from '@expo-google-fonts/nunito';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { PersistReadyGate } from './src/components/PersistReadyGate';
@@ -34,7 +41,15 @@ function LanguageSync({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({ Lora_400Regular, Lora_700Bold });
+  const [fontsLoaded] = useFonts({
+    Lora_400Regular,
+    Lora_700Bold,
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+  });
 
   // Restore the Supabase session and listen for sign-in / sign-out.
   useEffect(() => useAuthStore.getState().init(), []);

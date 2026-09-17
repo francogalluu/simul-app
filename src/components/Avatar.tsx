@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Text } from '@/components/AppText';
 import { usePeople, type Person } from '@/lib/people';
 
 /**

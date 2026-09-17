@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Image, Pressable, ActivityIndicator, Alert, Linking, StyleSheet } from 'react-native';
+import { View, Image, Pressable, ActivityIndicator, Alert, Linking, StyleSheet } from 'react-native';
+import { Text } from '@/components/AppText';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { pickAvatarFromCamera, pickAvatarFromLibrary, deleteAvatar } from '@/lib/avatarUpload';
