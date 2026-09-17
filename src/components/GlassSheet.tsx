@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Frost } from '@/components/Frost';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -24,7 +24,8 @@ import { S } from '@/lib/simulTheme';
  * rubber band when pulled the wrong way), and the scrim fades with it.
  *
  * Children are measured with onLayout, so the sheet is exactly as tall as its
- * content (capped at 92% of the screen — pass `scroll` content inside for more).
+ * content. Past 88% of the screen the body scrolls instead; the handle (and
+ * the scrim) still dismiss, so a long sheet never traps anyone.
  */
 export function GlassSheet({
   visible,
@@ -43,6 +44,10 @@ export function GlassSheet({
   const { height: screenHeight } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
   const [sheetHeight, setSheetHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const maxHeight = screenHeight * 0.88;
+  const chromeHeight = 10 + 5 + 6 + 6 + Math.max(insets.bottom, 14); // handle margins + content top + bottom inset
+  const overflows = contentHeight + chromeHeight > maxHeight;
 
   // translateY: 0 = fully open; sheetHeight = fully hidden.
   const ty = useSharedValue(screenHeight);
@@ -120,6 +125,26 @@ export function GlassSheet({
 
   if (!mounted) return null;
 
+  const body = (
+    <>
+      <GestureDetector gesture={pan}>
+        <View style={styles.handleZone}>
+          <View style={styles.handle} />
+        </View>
+      </GestureDetector>
+      <ScrollView
+        scrollEnabled={overflows}
+        bounces={false}
+        overScrollMode="never"
+        showsVerticalScrollIndicator={overflows}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.content, contentStyle]}
+      >
+        <View onLayout={(e) => setContentHeight(e.nativeEvent.layout.height)}>{children}</View>
+      </ScrollView>
+    </>
+  );
+
   return (
     <Modal visible transparent statusBarTranslucent animationType="none" onRequestClose={requestClose}>
       <View style={styles.root}>
@@ -127,23 +152,28 @@ export function GlassSheet({
           <Pressable style={StyleSheet.absoluteFill} onPress={dismissOnBackdrop ? requestClose : undefined} />
         </Animated.View>
 
-        <GestureDetector gesture={pan}>
+        {/* When the body fits, dragging anywhere dismisses. When it scrolls, only the handle does. */}
+        {overflows ? (
           <Animated.View
             onLayout={(e) => onLayout(e.nativeEvent.layout.height)}
-            style={[styles.sheet, { maxHeight: screenHeight * 0.92, paddingBottom: Math.max(insets.bottom, 14) }, sheetStyle]}
+            style={[styles.sheet, { maxHeight, paddingBottom: Math.max(insets.bottom, 14) }, sheetStyle]}
           >
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 46 : 70}
-              tint="light"
-              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-              style={StyleSheet.absoluteFill}
-            />
-            <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tint]} />
+            <Frost intensity={46} />
             <View pointerEvents="none" style={styles.lipHighlight} />
-            <View style={styles.handle} />
-            <View style={[styles.content, contentStyle]}>{children}</View>
+            {body}
           </Animated.View>
-        </GestureDetector>
+        ) : (
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              onLayout={(e) => onLayout(e.nativeEvent.layout.height)}
+              style={[styles.sheet, { maxHeight, paddingBottom: Math.max(insets.bottom, 14) }, sheetStyle]}
+            >
+              <Frost intensity={46} />
+              <View pointerEvents="none" style={styles.lipHighlight} />
+              {body}
+            </Animated.View>
+          </GestureDetector>
+        )}
       </View>
     </Modal>
   );
@@ -169,9 +199,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-  tint: {
-    backgroundColor: S.glassTint,
-  },
   lipHighlight: {
     position: 'absolute',
     top: 0,
@@ -180,14 +207,16 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth * 2,
     backgroundColor: S.glassEdge,
   },
+  handleZone: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
   handle: {
-    alignSelf: 'center',
     width: 40,
     height: 5,
     borderRadius: 3,
     backgroundColor: 'rgba(38, 32, 25, 0.18)',
-    marginTop: 10,
-    marginBottom: 6,
   },
   content: {
     paddingHorizontal: 20,

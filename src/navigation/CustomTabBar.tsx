@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Pressable, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Frost } from '@/components/Frost';
 import { Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -25,13 +25,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 50 : 80}
-        tint="light"
-        experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-        style={StyleSheet.absoluteFill}
-      />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tint]} />
+      <Frost intensity={50} />
       <View pointerEvents="none" style={styles.edge} />
       <View style={styles.tabRow}>
         {state.routes.map((route, index) => {
@@ -89,9 +83,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
     backgroundColor: 'rgba(255, 252, 246, 0.4)',
-  },
-  tint: {
-    backgroundColor: S.glassTint,
   },
   edge: {
     position: 'absolute',

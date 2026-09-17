@@ -64,7 +64,7 @@
     "reminders": "Reminders",
     "remindersOn": "On",
     "remindersOff": "Off",
-    "remindersUnsupported": "Needs a dev build on Android",
+    "remindersUnsupported": "Not in Expo Go",
     "remindersHint": "Set a time per habit when adding or editing it.",
     "dangerZone": "Careful",
     "dangerZoneHint": "These can't be undone.",

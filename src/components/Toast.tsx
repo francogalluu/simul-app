@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Frost } from '@/components/Frost';
 import Animated, { FadeOutUp, SlideInUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/AppText';
@@ -40,13 +40,7 @@ function ToastCard({ item }: { item: ToastItem }) {
         }}
         style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
       >
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 40 : 60}
-          tint="light"
-          experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-          style={StyleSheet.absoluteFill}
-        />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tint]} />
+        <Frost intensity={40} strong />
         <View style={[styles.iconWrap, { backgroundColor: ACCENT[item.kind] }]}>
           <Text style={styles.icon}>{item.icon ?? DEFAULT_ICON[item.kind]}</Text>
         </View>
@@ -82,9 +76,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 18,
     elevation: 8,
-  },
-  tint: {
-    backgroundColor: S.glassTintStrong,
   },
   iconWrap: {
     width: 34,

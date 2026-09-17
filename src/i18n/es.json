@@ -64,7 +64,7 @@
     "reminders": "Recordatorios",
     "remindersOn": "Activados",
     "remindersOff": "Desactivados",
-    "remindersUnsupported": "Requiere build de desarrollo en Android",
+    "remindersUnsupported": "No en Expo Go",
     "remindersHint": "Elegí una hora por hábito al crearlo o editarlo.",
     "dangerZone": "Con cuidado",
     "dangerZoneHint": "Esto no se puede deshacer.",

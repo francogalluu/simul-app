@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Gesture,
   GestureDetector,
@@ -209,7 +210,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <PullRefreshIndicator refreshing={refreshing} pullDistance={pullDistance} />
       <AnimatedScrollView
         showsVerticalScrollIndicator={false}
