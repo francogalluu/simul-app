@@ -22,7 +22,8 @@
   "tabs": {
     "home": "Home",
     "goals": "Goals",
-    "settings": "Settings"
+    "settings": "Settings",
+    "stats": "Stats"
   },
   "settings": {
     "title": "Settings",
@@ -55,7 +56,19 @@
     "leaveMessage": "Your personal habits and check-ins will be deleted. Shared habits stay with your partner.",
     "deleteAccount": "Delete account",
     "deleteAccountMessage": "This permanently deletes your account and all of your data. This can't be undone.",
-    "profile": "Profile"
+    "profile": "Profile",
+    "anniversary": "Together since",
+    "anniversaryNotSet": "Not set",
+    "anniversaryHint": "Your start date. Simul marks 100 days, one year and the rest.",
+    "clearDate": "Clear date",
+    "reminders": "Reminders",
+    "remindersOn": "On",
+    "remindersOff": "Off",
+    "remindersUnsupported": "Needs a dev build on Android",
+    "remindersHint": "Set a time per habit when adding or editing it.",
+    "dangerZone": "Careful",
+    "dangerZoneHint": "These can't be undone.",
+    "notificationsDenied": "Notifications are off for Simul. Turn them on in your phone's Settings."
   },
   "alerts": {
     "weekStartsOn": "Week starts on"
@@ -99,9 +112,14 @@
     "photoPermissionBody": "Enable photo access in Settings to set a profile picture.",
     "openSettings": "Open Settings",
     "notifTitle": "Stay on track",
-    "notifBody": "We'll let you know about invites from your partner and, soon, habit reminders. You can change this anytime in Settings.",
+    "notifBody": "Habit reminders at the times you choose, a heads-up when your partner invites you to a habit, and a nudge when they're waiting on you. You can change this anytime in Settings.",
     "notifEnable": "Enable notifications",
-    "notifSkip": "Not now"
+    "notifSkip": "Not now",
+    "stepYou": "First, you. A name and a face your partner will recognise.",
+    "next": "Next",
+    "colorTitle": "Pick your color",
+    "colorBody": "It marks your check-ins and your side of every shared habit.",
+    "togetherTitle": "Now, the two of you"
   },
   "errors": {
     "syncTitle": "Couldn't save that",

@@ -3,8 +3,9 @@ import * as Crypto from 'expo-crypto';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase, toAppError, logError } from '@/lib/supabase';
 import { showSyncError } from '@/lib/errors';
-import { today } from '@/lib/dates';
+import { addDays, today } from '@/lib/dates';
 import type { Owner, Person } from '@/lib/people';
+import { notifyInvite, notifyNudge } from '@/lib/inAppNotifications';
 import type { Member } from './householdStore';
 
 // Habits + completions for the signed-in user's household, synced with Supabase.
@@ -20,6 +21,12 @@ import type { Member } from './householdStore';
 export type HabitStatus = 'active' | 'pending';
 export type TimeOfDay = 'Morning' | 'Afternoon' | 'Evening' | 'All day';
 
+/** A stretch of days a habit is paused. `to` null = still paused. Inclusive. */
+export interface Pause {
+  from: string;
+  to: string | null;
+}
+
 export interface Habit {
   id: string;
   name: string;
@@ -31,10 +38,16 @@ export interface Habit {
   createdAt: string;
   /** For shared habits: who sent the invite. */
   requestedBy?: Person;
+  /** "HH:MM" local time for a daily reminder, or null for none. */
+  reminderTime: string | null;
+  /** Paused stretches; days inside one don't count for or against a streak. */
+  pauses: Pause[];
 }
 
 /** completions[date][habitId] = which people completed it that day. */
 export type Completions = Record<string, Record<string, Partial<Record<Person, boolean>>>>;
+/** proofs[date][habitId][person] = public URL of the photo they attached. */
+export type Proofs = Record<string, Record<string, Partial<Record<Person, string>>>>;
 
 export interface HabitDraft {
   name: string;
@@ -42,6 +55,7 @@ export interface HabitDraft {
   /** 'both' creates a pending invite for the partner. */
   owner: 'me' | 'both';
   icon: string;
+  reminderTime?: string | null;
 }
 
 type SyncStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -57,6 +71,8 @@ interface HabitRow {
   requested_by: string | null;
   created_on: string;
   created_at: string;
+  reminder_time: string | null;
+  pauses: unknown;
 }
 
 interface CompletionRow {
@@ -64,12 +80,25 @@ interface CompletionRow {
   habit_id: string;
   user_id: string;
   date: string;
+  proof_path: string | null;
+}
+
+interface NudgeRow {
+  id: string;
+  household_id: string;
+  habit_id: string;
+  from_user: string;
+  to_user: string;
+  date: string;
 }
 
 interface TasksState {
   status: SyncStatus;
   habits: Habit[];
   completions: Completions;
+  proofs: Proofs;
+  /** `${habitId}|${date}` → who sent a nudge about it (either direction). */
+  nudges: Record<string, Person>;
 
   start: (householdId: string, userId: string, members: Member[]) => Promise<void>;
   setMembers: (members: Member[]) => void;
@@ -77,18 +106,31 @@ interface TasksState {
   stop: () => void;
 
   addHabit: (draft: HabitDraft) => string;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon'>>) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'reminderTime'>>) => void;
   removeHabit: (id: string) => void;
   acceptInvite: (id: string) => void;
   declineInvite: (id: string) => void;
   /** Flip my completion of a habit on a date. Returns the new completion state for that habit/date. */
   toggleCompletion: (habitId: string, date: string, person: Person) => Partial<Record<Person, boolean>>;
+
+  /** Pause from today until resumed. History and streak are kept. */
+  pauseHabit: (id: string) => void;
+  resumeHabit: (id: string) => void;
+  /** Take one day off without breaking the streak. */
+  skipDay: (id: string, date: string) => void;
+  /** Attach (or remove) a proof photo to my completion of a habit on a date. */
+  setProof: (habitId: string, date: string, path: string | null) => void;
+  /** Ping the partner about a shared habit they haven't done yet today. */
+  sendNudge: (habitId: string, date: string) => Promise<boolean>;
 }
 
 export const MAX_HABIT_NAME = 80;
 const TIMES: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'All day'];
-const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at';
+const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, reminder_time, pauses';
+const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path';
 const PAGE = 1000;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // ─── Module-level sync state (not part of React state) ───────────────────────
 
@@ -97,7 +139,9 @@ let channel: RealtimeChannel | null = null;
 let generation = 0; // bumps on start/stop so stale async work is ignored
 let habitRows: Record<string, HabitRow> = {};
 let completionRows: Record<string, CompletionRow> = {}; // by id
+let nudgeRows: Record<string, NudgeRow> = {};
 let slots: Record<string, Person> = {};
+let names: Record<string, string> = {};
 /** Keys `${habitId}|${date}` with my completion writes in flight; Realtime echoes for them are ignored. */
 const pendingToggles = new Map<string, Promise<void>>();
 /** Habits whose insert hasn't been confirmed yet; completions for them wait on it. */
@@ -111,7 +155,28 @@ function slotsFor(members: Member[]): Record<string, Person> {
   return map;
 }
 
-function derive(): Pick<TasksState, 'habits' | 'completions'> {
+/** Normalises the jsonb `pauses` column; anything malformed is dropped rather than trusted. */
+export function parsePauses(raw: unknown): Pause[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Pause[] = [];
+  for (const p of raw) {
+    if (!p || typeof p !== 'object') continue;
+    const { from, to } = p as { from?: unknown; to?: unknown };
+    if (typeof from !== 'string' || !DATE_RE.test(from)) continue;
+    if (to !== null && to !== undefined && (typeof to !== 'string' || !DATE_RE.test(to))) continue;
+    out.push({ from, to: to ?? null });
+  }
+  return out.sort((a, b) => a.from.localeCompare(b.from));
+}
+
+/** Postgres `time` comes back as "HH:MM:SS"; the app only cares about "HH:MM". */
+const toClock = (t: string | null) => (t ? t.slice(0, 5) : null);
+
+export function proofPublicUrl(path: string): string {
+  return supabase.storage.from('habit-proofs').getPublicUrl(path).data.publicUrl;
+}
+
+function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs' | 'nudges'> {
   const habits: Habit[] = [];
   for (const row of Object.values(habitRows).sort((a, b) => a.created_at.localeCompare(b.created_at))) {
     const owner: Owner | undefined = row.owner_id == null ? 'both' : slots[row.owner_id];
@@ -125,15 +190,24 @@ function derive(): Pick<TasksState, 'habits' | 'completions'> {
       status: row.status,
       createdAt: row.created_on,
       requestedBy: row.requested_by ? slots[row.requested_by] : undefined,
+      reminderTime: toClock(row.reminder_time),
+      pauses: parsePauses(row.pauses),
     });
   }
   const completions: Completions = {};
+  const proofs: Proofs = {};
   for (const row of Object.values(completionRows)) {
     const person = slots[row.user_id];
     if (!person || !habitRows[row.habit_id]) continue;
     ((completions[row.date] ??= {})[row.habit_id] ??= {})[person] = true;
+    if (row.proof_path) ((proofs[row.date] ??= {})[row.habit_id] ??= {})[person] = proofPublicUrl(row.proof_path);
   }
-  return { habits, completions };
+  const nudges: Record<string, Person> = {};
+  for (const n of Object.values(nudgeRows)) {
+    const from = slots[n.from_user];
+    if (from) nudges[`${n.habit_id}|${n.date}`] = from;
+  }
+  return { habits, completions, proofs, nudges };
 }
 
 async function fetchAll<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
@@ -157,20 +231,25 @@ export const useTasksStore = create<TasksState>()((set, get) => {
   async function loadAll(gen: number) {
     if (!ctx) return;
     const { householdId } = ctx;
+    const since = addDays(today(), -1);
     const fetchOnce = () =>
       Promise.all([
         fetchAll<HabitRow>((from, to) =>
           supabase.from('habits').select(HABIT_COLUMNS).eq('household_id', householdId).order('id').range(from, to),
         ),
         fetchAll<CompletionRow>((from, to) =>
-          supabase.from('completions').select('id, habit_id, user_id, date').eq('household_id', householdId).order('id').range(from, to),
+          supabase.from('completions').select(COMPLETION_COLUMNS).eq('household_id', householdId).order('id').range(from, to),
+        ),
+        fetchAll<NudgeRow>((from, to) =>
+          supabase.from('nudges').select('id, household_id, habit_id, from_user, to_user, date').eq('household_id', householdId).gte('date', since).order('id').range(from, to),
         ),
       ]);
     try {
       let habits: HabitRow[];
       let completions: CompletionRow[];
+      let nudges: NudgeRow[];
       try {
-        [habits, completions] = await fetchOnce();
+        [habits, completions, nudges] = await fetchOnce();
       } catch (e) {
         if (gen !== generation) return;
         // The project's database connection can briefly recycle after a period
@@ -179,7 +258,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         logError('tasks.load.retrying', e);
         await new Promise((resolve) => setTimeout(resolve, 900));
         if (gen !== generation) return;
-        [habits, completions] = await fetchOnce();
+        [habits, completions, nudges] = await fetchOnce();
       }
       if (gen !== generation) return;
       habitRows = Object.fromEntries(habits.map((h) => [h.id, h]));
@@ -188,6 +267,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const isPendingMine = (c: CompletionRow) => c.user_id === userId && pendingToggles.has(`${c.habit_id}|${c.date}`);
       const keep = [...completions.filter((c) => !isPendingMine(c)), ...Object.values(completionRows).filter(isPendingMine)];
       completionRows = Object.fromEntries(keep.map((c) => [c.id, c]));
+      nudgeRows = Object.fromEntries(nudges.map((n) => [n.id, n]));
       set({ status: 'ready', ...derive() });
     } catch (e) {
       if (gen !== generation) return;
@@ -205,7 +285,13 @@ export const useTasksStore = create<TasksState>()((set, get) => {
     } else {
       const row = payload.new;
       if (!ctx || row.household_id !== ctx.householdId) return;
+      const isNew = !habitRows[row.id];
       habitRows[row.id] = row;
+      // A shared-habit invite from the partner just landed: say so right away
+      // instead of waiting for them to notice the Mailbox badge.
+      if (isNew && payload.eventType === 'INSERT' && row.status === 'pending' && row.requested_by && row.requested_by !== ctx.userId) {
+        notifyInvite(row.name, names[row.requested_by] ?? 'Your partner');
+      }
     }
     publish();
   }
@@ -224,9 +310,26 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       for (const [cid, c] of Object.entries(completionRows)) {
         if (completionKey(c.habit_id, c.user_id, c.date) === completionKey(row.habit_id, row.user_id, row.date)) delete completionRows[cid];
       }
-      completionRows[row.id] = { id: row.id, habit_id: row.habit_id, user_id: row.user_id, date: row.date };
+      completionRows[row.id] = { id: row.id, habit_id: row.habit_id, user_id: row.user_id, date: row.date, proof_path: row.proof_path ?? null };
+    } else if (payload.eventType === 'UPDATE') {
+      const row = payload.new;
+      const local = completionRows[row.id];
+      if (!local) return;
+      completionRows[row.id] = { ...local, proof_path: row.proof_path ?? null };
     } else {
       return;
+    }
+    publish();
+  }
+
+  function onNudgeChange(payload: RealtimePostgresChangesPayload<NudgeRow>) {
+    if (payload.eventType !== 'INSERT') return;
+    const row = payload.new;
+    if (!ctx || row.household_id !== ctx.householdId || nudgeRows[row.id]) return;
+    nudgeRows[row.id] = row;
+    if (row.to_user === ctx.userId) {
+      const habit = habitRows[row.habit_id];
+      notifyNudge(habit?.name ?? 'a habit', names[row.from_user] ?? 'Your partner', habit?.icon);
     }
     publish();
   }
@@ -258,10 +361,31 @@ export const useTasksStore = create<TasksState>()((set, get) => {
     }
   }
 
+  /** Optimistic update of the `pauses` column with rollback. */
+  function writePauses(id: string, next: Pause[], context: string) {
+    const before = habitRows[id];
+    if (!before) return;
+    const gen = generation;
+    habitRows[id] = { ...before, pauses: next };
+    publish();
+    void (async () => {
+      await pendingHabitInserts.get(id);
+      const { data, error } = await supabase.from('habits').update({ pauses: next }).eq('id', id).select('id');
+      if (gen !== generation) return;
+      if (error || !data?.length) {
+        if (habitRows[id]) habitRows[id] = before;
+        publish();
+        fail(context, error ?? { code: '42501' });
+      }
+    })();
+  }
+
   return {
     status: 'idle',
     habits: [],
     completions: {},
+    proofs: {},
+    nudges: {},
 
     start: async (householdId, userId, members) => {
       if (ctx?.householdId === householdId && ctx.userId === userId && channel) {
@@ -272,6 +396,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const gen = ++generation;
       ctx = { householdId, userId };
       slots = slotsFor(members);
+      names = Object.fromEntries(members.map((m) => [m.userId, m.displayName]));
       set({ status: 'loading' });
 
       let subscribedOnce = false;
@@ -284,7 +409,9 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'habits', filter }, onHabitChange)
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'habits' }, onHabitChange)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'completions', filter }, onCompletionChange)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'completions', filter }, onCompletionChange)
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'completions' }, onCompletionChange)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nudges', filter }, onNudgeChange)
         .subscribe((status) => {
           if (gen !== generation || status !== 'SUBSCRIBED') return;
           // After a reconnect we may have missed events: resync everything.
@@ -297,6 +424,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
 
     setMembers: (members) => {
       slots = slotsFor(members);
+      names = Object.fromEntries(members.map((m) => [m.userId, m.displayName]));
       publish();
     },
 
@@ -311,10 +439,12 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       ctx = null;
       habitRows = {};
       completionRows = {};
+      nudgeRows = {};
       slots = {};
+      names = {};
       pendingToggles.clear();
       pendingHabitInserts.clear();
-      set({ status: 'idle', habits: [], completions: {} });
+      set({ status: 'idle', habits: [], completions: {}, proofs: {}, nudges: {} });
     },
 
     addHabit: (draft) => {
@@ -322,6 +452,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const { householdId, userId } = ctx;
       const gen = generation;
       const shared = draft.owner === 'both';
+      const reminder = draft.reminderTime && TIME_RE.test(draft.reminderTime) ? draft.reminderTime : null;
       const row: HabitRow = {
         id: Crypto.randomUUID(),
         household_id: householdId,
@@ -333,12 +464,14 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         requested_by: shared ? userId : null,
         created_on: today(),
         created_at: new Date().toISOString(),
+        reminder_time: reminder,
+        pauses: [],
       };
       habitRows[row.id] = row;
       publish();
 
       const request = (async () => {
-        const { created_at: _serverSet, ...insert } = row;
+        const { created_at: _serverSet, pauses: _default, ...insert } = row;
         const { error } = await supabase.from('habits').insert(insert);
         if (gen !== generation) return false;
         if (error) {
@@ -358,10 +491,11 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const before = habitRows[id];
       if (!before) return;
       const gen = generation;
-      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day'>> = {};
+      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'reminder_time'>> = {};
       if (patch.name != null) update.name = patch.name.trim().slice(0, MAX_HABIT_NAME);
       if (patch.icon != null) update.icon = patch.icon.slice(0, 16);
       if (patch.time != null && TIMES.includes(patch.time as TimeOfDay)) update.time_of_day = patch.time;
+      if (patch.reminderTime !== undefined) update.reminder_time = patch.reminderTime && TIME_RE.test(patch.reminderTime) ? patch.reminderTime : null;
       habitRows[id] = { ...before, ...update };
       publish();
 
@@ -452,7 +586,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         delete completionRows[existing.id];
       } else {
         const id = Crypto.randomUUID();
-        completionRows[id] = { id, habit_id: habitId, user_id: userId, date };
+        completionRows[id] = { id, habit_id: habitId, user_id: userId, date, proof_path: null };
       }
       publish();
 
@@ -473,6 +607,80 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       pendingToggles.set(key, job);
 
       return get().completions[date]?.[habitId] ?? {};
+    },
+
+    pauseHabit: (id) => {
+      const habit = habitRows[id];
+      if (!habit) return;
+      const pauses = parsePauses(habit.pauses);
+      if (pauses.some((p) => p.to === null)) return; // already paused
+      writePauses(id, [...pauses, { from: today(), to: null }], 'tasks.pauseHabit');
+    },
+
+    resumeHabit: (id) => {
+      const habit = habitRows[id];
+      if (!habit) return;
+      const t = today();
+      const pauses = parsePauses(habit.pauses)
+        // Paused and resumed on the same day: as if it never happened.
+        .filter((p) => !(p.to === null && p.from === t))
+        .map((p) => (p.to === null ? { ...p, to: addDays(t, -1) } : p));
+      writePauses(id, pauses, 'tasks.resumeHabit');
+    },
+
+    skipDay: (id, date) => {
+      const habit = habitRows[id];
+      if (!habit) return;
+      const pauses = parsePauses(habit.pauses);
+      if (pauses.some((p) => p.from <= date && (p.to === null || date <= p.to))) return;
+      writePauses(id, [...pauses, { from: date, to: date }], 'tasks.skipDay');
+    },
+
+    setProof: (habitId, date, path) => {
+      if (!ctx) return;
+      const { userId } = ctx;
+      const gen = generation;
+      const local = Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === userId && c.date === date);
+      if (!local) return;
+      const before = local;
+      completionRows[local.id] = { ...local, proof_path: path };
+      publish();
+
+      void (async () => {
+        // The completion itself may still be on its way to the server.
+        await pendingToggles.get(`${habitId}|${date}`);
+        const current = completionRows[local.id] ?? Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === userId && c.date === date);
+        if (!current) return;
+        const { data, error } = await supabase.from('completions').update({ proof_path: path }).eq('id', current.id).select('id');
+        if (gen !== generation) return;
+        if (error || !data?.length) {
+          if (completionRows[current.id]) completionRows[current.id] = { ...current, proof_path: before.proof_path };
+          publish();
+          fail('tasks.setProof', error ?? { code: '42501' });
+        }
+      })();
+    },
+
+    sendNudge: async (habitId, date) => {
+      if (!ctx) return false;
+      const { householdId, userId } = ctx;
+      const toUser = Object.keys(slots).find((u) => u !== userId);
+      if (!toUser) return false;
+      const key = `${habitId}|${date}`;
+      if (get().nudges[key] === slots[userId]) return true; // already sent today
+      const gen = generation;
+      const row: NudgeRow = { id: Crypto.randomUUID(), household_id: householdId, habit_id: habitId, from_user: userId, to_user: toUser, date };
+      nudgeRows[row.id] = row;
+      publish();
+      const { error } = await supabase.from('nudges').insert(row);
+      if (gen !== generation) return false;
+      if (error && error.code !== '23505') {
+        delete nudgeRows[row.id];
+        publish();
+        fail('tasks.sendNudge', error);
+        return false;
+      }
+      return true;
     },
   };
 });

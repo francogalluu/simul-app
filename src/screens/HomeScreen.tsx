@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
   Gesture,
   GestureDetector,
@@ -8,6 +8,8 @@ import {
 } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
+  FadeIn,
+  FadeOut,
   interpolate,
   runOnJS,
   useAnimatedScrollHandler,
@@ -18,19 +20,27 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
+import { X } from 'lucide-react-native';
 import type { RootStackParamList } from '@/navigation/types';
+import { useTabBarInset } from '@/navigation/CustomTabBar';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTasksStore, type Habit } from '@/store/tasksStore';
 import { useHouseholdStore } from '@/store/householdStore';
-import { addDays, getWeekDates, isFuture, today } from '@/lib/dates';
+import { addDays, getDayOfWeekIndex, getWeekDates, isFuture, today } from '@/lib/dates';
 import { partnerOf, useMe } from '@/lib/people';
 import { togetherStreak } from '@/lib/streaks';
+import { computeMilestones } from '@/lib/milestones';
+import { usePartnerPresence } from '@/lib/presence';
 import { haptic } from '@/lib/haptics';
-import { S, SCREEN_PADDING } from '@/lib/simulTheme';
+import { Text } from '@/components/AppText';
+import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { HomeTopBar } from '@/components/home/HomeTopBar';
-import { CalendarCard } from '@/components/home/CalendarCard';
+import { CalendarCard, type HomeMode } from '@/components/home/CalendarCard';
 import { TaskList } from '@/components/home/TaskList';
-import { HabitActionSheet } from '@/components/home/HabitActionSheet';
+import { WeekView } from '@/components/home/WeekView';
+import { HabitSheet } from '@/components/home/HabitSheet';
+import { MonthSheet } from '@/components/home/MonthSheet';
+import { WeeklyRecapCard } from '@/components/home/WeeklyRecapCard';
 import { PullRefreshIndicator } from '@/components/home/PullRefreshIndicator';
 
 /** Native spinner is hidden (see RefreshControl below) in favor of PullRefreshIndicator. */
@@ -51,17 +61,22 @@ const SLIDE_SPRING = { damping: 20, stiffness: 190, mass: 0.7 };
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
+  const tabInset = useTabBarInset();
 
   const me = useMe();
   const weekStartsOn = useSettingsStore((s) => s.weekStartsOn);
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
-  const removeHabit = useTasksStore((s) => s.removeHabit);
+  const anniversary = useHouseholdStore((s) => s.household?.anniversary ?? null);
+  const { partnerHere } = usePartnerPresence();
 
   const [selectedDate, setSelectedDate] = useState(today);
+  const [mode, setMode] = useState<HomeMode>('day');
   const [sheetHabit, setSheetHabit] = useState<Habit | null>(null);
+  const [monthOpen, setMonthOpen] = useState(false);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
+  const [milestoneDismissed, setMilestoneDismissed] = useState(false);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -71,11 +86,16 @@ export default function HomeScreen() {
     () => habits.filter((h) => h.status === 'pending' && h.requestedBy != null && h.requestedBy !== me).length,
     [habits, me],
   );
+  const milestone = useMemo(() => computeMilestones(anniversary, habits, completions).today[0] ?? null, [anniversary, habits, completions]);
   const readOnly = isFuture(selectedDate);
+  const t = today();
+  // The Sunday recap: the week that's just wrapped up, on the last day of it.
+  const showRecap = mode === 'day' && selectedDate === t && getDayOfWeekIndex(t) === 0;
 
   // ─── Day swiping ────────────────────────────────────────────────────────────
   // Content slides out in the swipe direction, the date swaps, then the new
-  // day's content springs in from the opposite side.
+  // day's content springs in from the opposite side. In week mode a swipe
+  // moves a whole week.
   const tx = useSharedValue(0);
   const slideOffset = width * 0.5;
 
@@ -94,9 +114,10 @@ export default function HomeScreen() {
   const shiftDay = useCallback(
     (dir: 1 | -1) => {
       haptic.tap();
-      slide(dir, () => setSelectedDate((d) => addDays(d, dir)));
+      const step = mode === 'week' ? 7 : 1;
+      slide(dir, () => setSelectedDate((d) => addDays(d, dir * step)));
     },
-    [slide],
+    [slide, mode],
   );
 
   const goToDate = useCallback(
@@ -133,10 +154,10 @@ export default function HomeScreen() {
   }));
 
   // ─── Completing habits ──────────────────────────────────────────────────────
-  const handleToggle = useCallback(
-    (habit: Habit) => {
-      if (readOnly) return;
-      const next = toggleCompletion(habit.id, selectedDate, me);
+  const toggleOn = useCallback(
+    (habit: Habit, date: string) => {
+      if (isFuture(date)) return;
+      const next = toggleCompletion(habit.id, date, me);
       const nowDone = Boolean(next[me]);
       if (habit.owner === 'both' && nowDone && next[partnerOf(me)]) {
         haptic.success();
@@ -149,13 +170,24 @@ export default function HomeScreen() {
         haptic.tap();
       }
     },
-    [readOnly, toggleCompletion, selectedDate, me],
+    [toggleCompletion, me],
   );
+
+  const handleToggle = useCallback((habit: Habit) => toggleOn(habit, selectedDate), [toggleOn, selectedDate]);
 
   const openSheet = useCallback((habit: Habit) => {
     haptic.medium();
     setSheetHabit(habit);
   }, []);
+
+  const changeMode = useCallback(
+    (next: HomeMode) => {
+      if (next === mode) return;
+      haptic.tap();
+      setMode(next);
+    },
+    [mode],
+  );
 
   // ─── Pull to refresh ────────────────────────────────────────────────────────
   // How far past the top the scroll view has been dragged (iOS reports this
@@ -181,7 +213,7 @@ export default function HomeScreen() {
       <PullRefreshIndicator refreshing={refreshing} pullDistance={pullDistance} />
       <AnimatedScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabInset + 12 }]}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={
@@ -200,6 +232,19 @@ export default function HomeScreen() {
           onAchievements={() => navigation.navigate('Achievements')}
         />
 
+        {milestone && !milestoneDismissed && (
+          <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)} style={styles.milestone}>
+            <Text style={styles.milestoneIcon}>{milestone.icon}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.milestoneTitle}>{milestone.title}</Text>
+              <Text style={styles.milestoneBody}>{milestone.subtitle}</Text>
+            </View>
+            <Pressable onPress={() => setMilestoneDismissed(true)} hitSlop={10} accessibilityLabel="Dismiss">
+              <X size={16} color={S.ink500} strokeWidth={2.4} />
+            </Pressable>
+          </Animated.View>
+        )}
+
         <GestureDetector gesture={pan}>
           <Animated.View style={swipeStyle}>
             <CalendarCard
@@ -208,32 +253,61 @@ export default function HomeScreen() {
               togetherStreak={ourStreak}
               habits={habits}
               completions={completions}
+              partnerHere={partnerHere}
+              mode={mode}
               onSelectDate={goToDate}
+              onOpenMonth={() => { haptic.tap(); setMonthOpen(true); }}
+              onChangeMode={changeMode}
             />
-            <TaskList
-              me={me}
-              date={selectedDate}
-              readOnly={readOnly}
-              habits={habits}
-              completions={completions}
-              celebratingId={celebratingId}
-              onToggle={handleToggle}
-              onLongPress={openSheet}
-              onAddHabit={() => navigation.navigate('AddHabit')}
-            />
+            {showRecap && (
+              <View style={{ marginTop: 16 }}>
+                <WeeklyRecapCard weekDates={weekDates} habits={habits} completions={completions} title="Your week, wrapped" compact />
+              </View>
+            )}
+            {mode === 'week' ? (
+              <WeekView
+                me={me}
+                weekDates={weekDates}
+                selectedDate={selectedDate}
+                habits={habits}
+                completions={completions}
+                onToggle={toggleOn}
+                onSelectDate={(d) => { setSelectedDate(d); haptic.tap(); }}
+                onLongPress={openSheet}
+                onAddHabit={() => navigation.navigate('AddHabit')}
+              />
+            ) : (
+              <TaskList
+                me={me}
+                date={selectedDate}
+                readOnly={readOnly}
+                habits={habits}
+                completions={completions}
+                celebratingId={celebratingId}
+                onToggle={handleToggle}
+                onLongPress={openSheet}
+                onAddHabit={() => navigation.navigate('AddHabit')}
+              />
+            )}
           </Animated.View>
         </GestureDetector>
       </AnimatedScrollView>
 
-      <HabitActionSheet
+      <HabitSheet
         habit={sheetHabit}
+        date={selectedDate}
         me={me}
         onClose={() => setSheetHabit(null)}
         onEdit={(h) => navigation.navigate('AddHabit', { habitId: h.id })}
-        onDelete={(h) => {
-          haptic.warning();
-          removeHabit(h.id);
-        }}
+      />
+      <MonthSheet
+        visible={monthOpen}
+        onClose={() => setMonthOpen(false)}
+        selectedDate={selectedDate}
+        weekStartsOn={weekStartsOn}
+        habits={habits}
+        completions={completions}
+        onSelectDate={goToDate}
       />
     </SafeAreaView>
   );
@@ -246,6 +320,28 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 28,
+  },
+  milestone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: S.goldSoft,
+    ...cardShadow,
+  },
+  milestoneIcon: {
+    fontSize: 26,
+  },
+  milestoneTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: S.ink900,
+  },
+  milestoneBody: {
+    fontSize: 12.5,
+    color: S.ink600,
+    marginTop: 1,
   },
 });

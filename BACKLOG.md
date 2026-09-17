@@ -73,3 +73,25 @@ What carries over automatically with no setup: the Supabase backend (cloud, tied
 ## Naming history (for context, not action items)
 
 App was going to be named after the reference habit-tracker artifact "Sprout" before landing on **Simul** (Latin, "together, at the same time" — no existing app collisions found at the time of choosing).
+
+## Ideas branch (`feature/ideas-and-habit-sheet`, 17 Sep 2026)
+
+Everything from IDEAS.md except the home-screen widget, plus the glass habit sheet. Schema is in `supabase/migrations/20260917150000_reminders_pauses_proofs_nudges.sql` (already applied to the live project — additive only, master keeps working against it).
+
+- **Habit sheet** (`src/components/home/HabitSheet.tsx` on `src/components/GlassSheet.tsx`): long-press a habit → frosted sheet slides up (expo-blur + reanimated + gesture-handler, drag down to dismiss). Shows streak/best/total + last-14-days dots, the day's proof photos, and the actions: nudge, edit, skip today, pause/resume, delete. `GlassSheet` is reusable (MonthSheet uses it too). On Android `expo-blur` only really blurs with `experimentalBlurMethod="dimezisBlurView"`; without it you get just the tint.
+- **Reminders** (`src/lib/reminders.ts`): `habits.reminder_time`, per-habit switch + time picker in AddHabit (defaults from the Morning/Afternoon/Evening bucket). `ReminderSync` in App.tsx rebuilds all DAILY local notifications whenever `reminderSignature()` changes. Same deferred-import rule as before — doesn't fire in Expo Go on Android (the time is still saved).
+- **Pause / skip** (`habits.pauses` jsonb `[{from,to|null}]`): paused days are transparent to every streak calculation (`isPausedOn` in `streaks.ts`); paused habits stay in the list dimmed with a badge so they're easy to resume.
+- **Nudges** (`nudges` table + Realtime): "X is waiting for you" — inserts a row, the partner's app shows a toast (and a local notification if backgrounded). One per habit/sender/day (unique constraint). Not remote push — see IDEAS.md.
+- **Invite alerts**: same mechanism — a Realtime INSERT of a pending habit from the partner shows a toast that opens the Mailbox.
+- **Toasts** (`src/lib/toast.ts`, `src/components/Toast.tsx`): `showSyncError` is now a toast, not an Alert. Alerts remain for confirmations and for actions the user explicitly started.
+- **Presence** (`src/lib/presence.ts`): Realtime Presence channel `presence:<householdId>`, tracked while foregrounded. "Both here right now" under the couple name on Home.
+- **Week view**: Day/Week toggle on the calendar card; week mode swaps the task list for a habits × days grid (`WeekView.tsx`), day-swipe moves a week. Tapping the month label opens `MonthSheet` (month grid, jump to any day).
+- **Stats tab** (`src/screens/StatsScreen.tsx`): month completion-rate comparison, heatmap, streaks (each + together), per-habit 30-day sparkline + streaks, weekly recap card, milestones.
+- **Weekly recap** (`WeeklyRecapCard.tsx`): "In sync 5/7 days"; shows on Home on Sundays and always in Stats; "Share as image" = `react-native-view-shot` capture + `expo-sharing`.
+- **Proof photos** (`completions.proof_path`, bucket `habit-proofs`, `src/lib/proofUpload.ts`): from the habit sheet once you've checked in that day; same base64→ArrayBuffer upload rule as avatars.
+- **Milestones** (`households.anniversary`, `src/lib/milestones.ts`): "Together since" date in Settings → 100 days / 1 year / etc. banner on Home the day of, list in Stats. Habit day-count milestones too.
+- **Tab bar** is now frosted and floats (absolute) — any tab screen must pad its scroll content with `useTabBarInset()` from `CustomTabBar.tsx`.
+- **Onboarding** is a 3-step pager (you → color → start/join). **Settings**: destructive actions moved to a quiet "Careful" section at the bottom; new rows for Reminders and Together since.
+- **"0 Days"** streak pill now reads "Start today" until the first day.
+- `tsconfig.json` got `ignoreDeprecations: "6.0"` so `npx tsc --noEmit` runs on TS 6 (it was failing on `baseUrl` before any of this).
+- `npm install` needs `--legacy-peer-deps` on this tree (react-i18next peer range); that was already true before this branch.

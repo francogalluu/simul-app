@@ -14,6 +14,8 @@ export interface Member {
 export interface Household {
   id: string;
   inviteCode: string | null;
+  /** The couple's own start date (YYYY-MM-DD), for milestone moments. */
+  anniversary: string | null;
 }
 
 /** 'none' = signed in but not part of a household yet (show onboarding). */
@@ -41,6 +43,7 @@ interface HouseholdState {
   regenerateInviteCode: () => Promise<Result>;
   rename: (displayName: string) => Promise<Result>;
   updateProfile: (profile: Profile) => Promise<Result>;
+  setAnniversary: (date: string | null) => Promise<Result>;
   leaveHousehold: () => Promise<Result>;
   deleteAccount: () => Promise<Result>;
   reset: () => void;
@@ -80,7 +83,7 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     // RLS only returns the caller's own household and roster.
     const fetchOnce = () =>
       Promise.all([
-        supabase.from('households').select('id, invite_code').maybeSingle(),
+        supabase.from('households').select('id, invite_code, anniversary').maybeSingle(),
         supabase.from('household_members').select('id, user_id, display_name, color, avatar_path, joined_at'),
       ]);
 
@@ -110,7 +113,7 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     }
     set({
       status: 'ready',
-      household: { id: householdRes.data.id, inviteCode: householdRes.data.invite_code },
+      household: { id: householdRes.data.id, inviteCode: householdRes.data.invite_code, anniversary: householdRes.data.anniversary ?? null },
       members: (membersRes.data as MemberRow[]).map(toMember).sort(byJoinOrder),
     });
   },
@@ -180,6 +183,20 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     if (error) {
       logError('household.updateProfile', error);
       set({ members: previous });
+      return { error: toAppError(error) };
+    }
+    return {};
+  },
+
+  setAnniversary: async (date) => {
+    const household = get().household;
+    if (!household) return { error: 'unknown' };
+    const previous = household;
+    set({ household: { ...household, anniversary: date } });
+    const { error } = await supabase.from('households').update({ anniversary: date }).eq('id', household.id);
+    if (error) {
+      logError('household.setAnniversary', error);
+      set({ household: previous });
       return { error: toAppError(error) };
     }
     return {};

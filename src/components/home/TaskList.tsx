@@ -5,7 +5,8 @@ import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
-import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
+import { isDoneBy, isHabitActiveOn, isPausedNow, isPausedOn } from '@/lib/streaks';
+import { CoupleAvatars } from '@/components/CoupleAvatars';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit } from '@/store/tasksStore';
 import { EmptyState } from '@/components/EmptyState';
@@ -38,11 +39,13 @@ type RowState =
   | { kind: 'partner-waiting' }   // partner did it, I haven't
   | { kind: 'partner-only-todo' } // partner's own habit, not done
   | { kind: 'partner-only-done' }
-  | { kind: 'pending-invite' };   // shared invite I sent, not accepted yet
+  | { kind: 'pending-invite' }    // shared invite I sent, not accepted yet
+  | { kind: 'paused' }            // paused (or skipped on this day): still listed, not tickable
 
 function rowState(habit: Habit, completions: Completions, date: string, me: Person): RowState {
   const partner = partnerOf(me);
   if (habit.status === 'pending') return { kind: 'pending-invite' };
+  if (isPausedOn(habit, date)) return { kind: 'paused' };
   const mine = isDoneBy(completions, habit.id, date, me);
   const theirs = isDoneBy(completions, habit.id, date, partner);
   if (habit.owner === 'both') {
@@ -80,8 +83,9 @@ export function TaskList({
 }) {
   const partner = partnerOf(me);
   const people = usePeople();
+  // Paused habits stay in the list (dimmed) so they're easy to find and resume.
   const visible = habits.filter(
-    (h) => (h.status === 'active' && isHabitActiveOn(h, date)) || (h.status === 'pending' && h.requestedBy === me),
+    (h) => (h.status === 'active' && (isHabitActiveOn(h, date) || (h.createdAt <= date && isPausedOn(h, date)))) || (h.status === 'pending' && h.requestedBy === me),
   );
 
   const sections = [
@@ -105,25 +109,21 @@ export function TaskList({
   return (
     <View style={styles.wrap}>
       {sections.map((section) => {
-        const doneCount = section.items.filter((h) => {
-          const st = rowState(h, completions, date, me).kind;
-          return st === 'done' || st === 'partner-only-done';
-        }).length;
+        const states = section.items.map((h) => rowState(h, completions, date, me).kind);
+        const doneCount = states.filter((st) => st === 'done' || st === 'partner-only-done').length;
+        const countable = states.filter((st) => st !== 'paused' && st !== 'pending-invite').length;
         return (
           <View key={section.key}>
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionHeaderLeft}>
                 {section.people.length === 2 ? (
-                  <View style={styles.sectionAvatarDuo}>
-                    <Avatar person="A" size={22} style={[styles.sectionAvatarDuoImg, { left: 0 }]} />
-                    <Avatar person="S" size={22} style={[styles.sectionAvatarDuoImg, { left: 12 }]} />
-                  </View>
+                  <CoupleAvatars size={22} overlap={0.45} />
                 ) : (
                   <Avatar person={section.people[0]} size={22} style={styles.sectionAvatarSingle} />
                 )}
                 <Text style={styles.sectionLabel}>{section.label}</Text>
               </View>
-              <Text style={styles.sectionCount}>{doneCount}/{section.items.length}</Text>
+              <Text style={styles.sectionCount}>{doneCount}/{countable}</Text>
             </View>
             <View style={styles.sectionCard}>
               {section.items.map((habit) => (
@@ -169,11 +169,13 @@ function TaskRow({
   const partnerName = usePeople()[partner].name;
   const k = state.kind;
   const isDone = k === 'done' || k === 'partner-only-done';
-  const dimmed = k === 'pending-invite';
+  const dimmed = k === 'pending-invite' || k === 'paused';
+  const pausedNow = k === 'paused' && isPausedNow(habit);
   const canToggle = !readOnly && (k === 'todo' || k === 'done' || k === 'waiting-partner' || k === 'partner-waiting');
 
   const meta = (() => {
     if (k === 'pending-invite') return <Text style={styles.meta}>Waiting for {partnerName} to accept</Text>;
+    if (k === 'paused') return <Text style={styles.meta}>{pausedNow ? 'Paused — long-press to resume' : 'Skipped this day'}</Text>;
     return (
       <View style={styles.metaRow}>
         <Text style={styles.meta}>{habit.time}</Text>
@@ -195,6 +197,13 @@ function TaskRow({
       return (
         <View style={[styles.checkbox, styles.checkboxAmber]}>
           <ClockIcon size={13} />
+        </View>
+      );
+    }
+    if (k === 'paused') {
+      return (
+        <View style={[styles.checkbox, styles.checkboxAmber]}>
+          <Text style={styles.pausedGlyph}>{pausedNow ? '❚❚' : '–'}</Text>
         </View>
       );
     }
@@ -259,6 +268,11 @@ function TaskRow({
               <Text style={styles.pendingBadgeText}>Pending</Text>
             </View>
           )}
+          {k === 'paused' && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>{pausedNow ? 'Paused' : 'Skipped'}</Text>
+            </View>
+          )}
         </View>
         {meta}
       </View>
@@ -297,19 +311,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  sectionAvatarDuo: {
-    width: 34,
-    height: 22,
-  },
-  sectionAvatarDuoImg: {
-    position: 'absolute',
-    top: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.6,
-    borderColor: S.bg,
   },
   sectionAvatarSingle: {
     width: 22,
@@ -412,6 +413,11 @@ const styles = StyleSheet.create({
   pendingBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+    color: S.amber,
+  },
+  pausedGlyph: {
+    fontSize: 9,
+    fontWeight: '800',
     color: S.amber,
   },
   // Fixed width + right alignment so the checkbox always lands in the same

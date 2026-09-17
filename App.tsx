@@ -19,6 +19,9 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { i18n, getDeviceLocale } from './src/i18n';
 import { useSettingsStore } from './src/store/settingsStore';
 import { useAuthStore } from './src/store/authStore';
+import { useTasksStore } from './src/store/tasksStore';
+import { ToastHost } from './src/components/Toast';
+import { configureNotificationHandler, reminderSignature, syncReminders } from './src/lib/reminders';
 
 // Ensure i18n is initialized (side-effect import).
 void i18n;
@@ -40,6 +43,17 @@ function LanguageSync({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Rebuilds the daily habit reminders whenever a habit's reminder time / name / paused state changes. */
+function ReminderSync() {
+  const habits = useTasksStore((s) => s.habits);
+  const permission = useSettingsStore((s) => s.notificationsPermission);
+  const signature = reminderSignature(habits);
+  useEffect(() => {
+    void syncReminders(useTasksStore.getState().habits);
+  }, [signature, permission]);
+  return null;
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Lora_400Regular,
@@ -53,6 +67,7 @@ export default function App() {
 
   // Restore the Supabase session and listen for sign-in / sign-out.
   useEffect(() => useAuthStore.getState().init(), []);
+  useEffect(() => { void configureNotificationHandler(); }, []);
 
   if (!fontsLoaded) {
     return (
@@ -72,6 +87,8 @@ export default function App() {
                 <NavigationContainer ref={navigationRef}>
                   <RootNavigator />
                 </NavigationContainer>
+                <ReminderSync />
+                <ToastHost />
               </LanguageSync>
             </PersistReadyGate>
           </ErrorBoundary>

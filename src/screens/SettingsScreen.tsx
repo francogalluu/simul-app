@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
+import { View, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
@@ -11,6 +13,9 @@ import { i18n } from '@/i18n';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
+import { getDateLocale, toLocalDateString, today } from '@/lib/dates';
+import { notificationsUnsupported, requestNotificationPermission } from '@/lib/notifications';
+import { useTabBarInset } from '@/navigation/CustomTabBar';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
@@ -20,10 +25,12 @@ const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0,
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const tabInset = useTabBarInset();
   const {
     hapticFeedback, setHapticFeedback,
     weekStartsOn, setWeekStartsOn,
     language, setLanguage,
+    notificationsPermission, setNotificationsPermission,
   } = useSettingsStore();
   const email = useAuthStore((s) => s.session?.user.email);
   const signOut = useAuthStore((s) => s.signOut);
@@ -31,6 +38,7 @@ export default function SettingsScreen() {
   const household = useHouseholdStore((s) => s.household);
   const rename = useHouseholdStore((s) => s.rename);
   const updateProfile = useHouseholdStore((s) => s.updateProfile);
+  const setAnniversary = useHouseholdStore((s) => s.setAnniversary);
   const regenerateInviteCode = useHouseholdStore((s) => s.regenerateInviteCode);
   const leaveHousehold = useHouseholdStore((s) => s.leaveHousehold);
   const deleteAccount = useHouseholdStore((s) => s.deleteAccount);
@@ -41,6 +49,7 @@ export default function SettingsScreen() {
 
   const [nameDraft, setNameDraft] = useState(people[me].name);
   const [busy, setBusy] = useState<null | 'code' | 'leave' | 'delete'>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   useEffect(() => setNameDraft(people[me].name), [people, me]);
 
   const pickWeekStart = () =>
@@ -77,10 +86,32 @@ export default function SettingsScreen() {
     if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
   };
 
+  const changeAnniversary = async (date: string | null) => {
+    haptic.tap();
+    const res = await setAnniversary(date);
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
+  };
+
   const shareCode = () => {
     if (!household?.inviteCode) return;
     haptic.tap();
     void Share.share({ message: t('settings.shareMessage', { code: formatCode(household.inviteCode) }) });
+  };
+
+  const remindersRow = async () => {
+    if (notificationsUnsupported) return;
+    if (notificationsPermission === 'granted') {
+      Alert.alert(t('settings.reminders'), t('settings.remindersHint'));
+      return;
+    }
+    const result = await requestNotificationPermission();
+    setNotificationsPermission(result);
+    if (result === 'denied') {
+      Alert.alert(t('settings.reminders'), t('settings.notificationsDenied'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('onboarding.openSettings'), onPress: () => void Linking.openSettings() },
+      ]);
+    }
   };
 
   // Destructive actions show errors inline via Alert and keep the button busy while running.
@@ -116,9 +147,19 @@ export default function SettingsScreen() {
       { text: t('common.delete'), style: 'destructive', onPress: () => runAction('delete', deleteAccount) },
     ]);
 
+  const anniversary = household?.anniversary ?? null;
+  const anniversaryLabel = anniversary
+    ? format(new Date(anniversary + 'T00:00:00'), 'd MMM yyyy', { locale: getDateLocale() })
+    : t('settings.anniversaryNotSet');
+  const remindersValue = notificationsUnsupported
+    ? t('settings.remindersUnsupported')
+    : notificationsPermission === 'granted'
+      ? t('settings.remindersOn')
+      : t('settings.remindersOff');
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: tabInset }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t('settings.title')}</Text>
 
         <Text style={styles.sectionLabel}>{t('settings.profile')}</Text>
@@ -162,6 +203,34 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.rowValue}>{partner.joined ? partner.name : t('settings.partnerNotJoined')}</Text>
           </View>
+          <Divider />
+          <Row label={t('settings.anniversary')} value={anniversaryLabel} onPress={() => { haptic.tap(); setDatePickerOpen((v) => !v); }} />
+          {datePickerOpen && (
+            <View style={styles.datePickerBlock}>
+              <DateTimePicker
+                value={new Date((anniversary ?? today()) + 'T00:00:00')}
+                mode="date"
+                maximumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  if (Platform.OS !== 'ios') setDatePickerOpen(false);
+                  if (event.type === 'dismissed' || !date) return;
+                  void changeAnniversary(toLocalDateString(date));
+                }}
+              />
+              <Text style={styles.hint}>{t('settings.anniversaryHint')}</Text>
+              <View style={styles.inviteActions}>
+                {anniversary && (
+                  <Pressable onPress={() => { void changeAnniversary(null); setDatePickerOpen(false); }} style={({ pressed }) => [styles.pillButton, pressed && { opacity: 0.8 }]}>
+                    <Text style={[styles.pillText, { color: S.danger }]}>{t('settings.clearDate')}</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => setDatePickerOpen(false)} style={({ pressed }) => [styles.pillButton, styles.pillPrimary, pressed && { opacity: 0.8 }]}>
+                  <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{t('common.done')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
 
           {!partner.joined && (
             <>
@@ -187,6 +256,8 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Row label={t('settings.language')} value={language === 'es' ? t('settings.spanish') : t('settings.english')} onPress={pickLanguage} />
           <Divider />
+          <Row label={t('settings.reminders')} value={remindersValue} onPress={notificationsUnsupported ? undefined : remindersRow} />
+          <Divider />
           <Row
             label={t('settings.hapticFeedback')}
             right={
@@ -206,16 +277,22 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <Row label={t('settings.email')} value={email ?? '—'} />
           <Divider />
-          <Row label={t('settings.signOut')} onPress={confirmSignOut} />
-          <Divider />
-          <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
-          <Divider />
-          <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
+          <Row label={t('settings.signOut')} onPress={confirmSignOut} last />
         </View>
 
         <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
         <View style={styles.card}>
           <Row label={t('settings.version')} value="1.0.0" last />
+        </View>
+
+        {/* Destructive actions live apart from everyday settings, at the very
+            end and visibly quieter, so their weight on screen matches their stakes. */}
+        <Text style={[styles.sectionLabel, { color: S.danger, marginTop: 34 }]}>{t('settings.dangerZone')}</Text>
+        <Text style={styles.dangerHint}>{t('settings.dangerZoneHint')}</Text>
+        <View style={styles.dangerCard}>
+          <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
+          <Divider />
+          <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -262,7 +339,6 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 32,
   },
   title: {
     fontFamily: fonts.bold,
@@ -285,6 +361,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
     ...cardShadow,
+  },
+  dangerCard: {
+    backgroundColor: 'transparent',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: S.dangerSoft,
+  },
+  dangerHint: {
+    fontSize: 12,
+    color: S.tertiary,
+    marginTop: -6,
+    marginBottom: 10,
   },
   profileCard: {
     paddingVertical: 20,
@@ -331,6 +421,11 @@ const styles = StyleSheet.create({
     color: S.ink700,
     paddingVertical: 4,
   },
+  datePickerBlock: {
+    paddingBottom: 14,
+    gap: 8,
+    alignItems: 'center',
+  },
   inviteBlock: {
     paddingVertical: 14,
     gap: 8,
@@ -353,6 +448,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 6,
+    alignSelf: 'stretch',
   },
   pillButton: {
     flex: 1,

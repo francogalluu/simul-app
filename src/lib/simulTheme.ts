@@ -32,6 +32,15 @@ export const S = {
   personB: '#6F9BC7',
 
   black: '#141210',
+
+  // Frosted-glass surfaces (see GlassSheet / CustomTabBar). The tint sits on
+  // top of a BlurView so the blur reads as a warm, milky pane rather than
+  // grey; the hairline is what sells the "edge of glass" at the sheet lip.
+  glassTint: 'rgba(255, 252, 246, 0.72)',
+  glassTintStrong: 'rgba(255, 252, 246, 0.86)',
+  glassEdge: 'rgba(255, 255, 255, 0.65)',
+  glassLine: 'rgba(38, 32, 25, 0.08)',
+  scrim: 'rgba(20, 18, 16, 0.32)',
 } as const;
 
 export const fonts = {

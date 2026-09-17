@@ -22,7 +22,8 @@
   "tabs": {
     "home": "Inicio",
     "goals": "Metas",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "stats": "Estadísticas"
   },
   "settings": {
     "title": "Ajustes",
@@ -55,7 +56,19 @@
     "leaveMessage": "Se van a borrar tus hábitos personales y tus completados. Los hábitos compartidos quedan con tu pareja.",
     "deleteAccount": "Eliminar cuenta",
     "deleteAccountMessage": "Esto elimina tu cuenta y todos tus datos para siempre. No se puede deshacer.",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "anniversary": "Juntos desde",
+    "anniversaryNotSet": "Sin fecha",
+    "anniversaryHint": "Su fecha de inicio. Simul marca los 100 días, el año y los que sigan.",
+    "clearDate": "Quitar fecha",
+    "reminders": "Recordatorios",
+    "remindersOn": "Activados",
+    "remindersOff": "Desactivados",
+    "remindersUnsupported": "Requiere build de desarrollo en Android",
+    "remindersHint": "Elegí una hora por hábito al crearlo o editarlo.",
+    "dangerZone": "Con cuidado",
+    "dangerZoneHint": "Esto no se puede deshacer.",
+    "notificationsDenied": "Las notificaciones de Simul están desactivadas. Activalas en los Ajustes del teléfono."
   },
   "alerts": {
     "weekStartsOn": "La semana empieza el"
@@ -99,9 +112,14 @@
     "photoPermissionBody": "Activá el acceso a las fotos en Ajustes para poner una foto de perfil.",
     "openSettings": "Abrir Ajustes",
     "notifTitle": "No te pierdas nada",
-    "notifBody": "Te avisamos de las invitaciones de tu pareja y, pronto, de recordatorios de hábitos. Podés cambiarlo cuando quieras en Ajustes.",
+    "notifBody": "Recordatorios de hábitos a la hora que elijas, un aviso cuando tu pareja te invite a un hábito y un empujoncito cuando te esté esperando. Podés cambiarlo cuando quieras en Ajustes.",
     "notifEnable": "Activar notificaciones",
-    "notifSkip": "Ahora no"
+    "notifSkip": "Ahora no",
+    "stepYou": "Primero, vos. Un nombre y una cara que tu pareja reconozca.",
+    "next": "Siguiente",
+    "colorTitle": "Elegí tu color",
+    "colorBody": "Marca tus check-ins y tu lado de cada hábito compartido.",
+    "togetherTitle": "Ahora, ustedes dos"
   },
   "errors": {
     "syncTitle": "No se pudo guardar",

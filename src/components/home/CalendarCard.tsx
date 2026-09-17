@@ -2,18 +2,21 @@ import React, { useMemo } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import Svg, { Circle } from 'react-native-svg';
+import { ChevronDown } from 'lucide-react-native';
 import { format } from 'date-fns';
-import { getDateLocale, getWeekDates, isFuture, today } from '@/lib/dates';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { getDateLocale, isFuture, today } from '@/lib/dates';
 import { usePeople } from '@/lib/people';
-import { Avatar } from '@/components/Avatar';
+import { CoupleAvatars } from '@/components/CoupleAvatars';
 import { summarizeDay } from '@/lib/streaks';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
-import type { WeekStartDay } from '@/store/settingsStore';
 import type { Completions, Habit } from '@/store/tasksStore';
 import { LightningIcon } from './HomeTopBar';
 
 const RING_RADIUS = 15;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+export type HomeMode = 'day' | 'week';
 
 export function CalendarCard({
   selectedDate,
@@ -21,14 +24,22 @@ export function CalendarCard({
   togetherStreak,
   habits,
   completions,
+  partnerHere,
+  mode,
   onSelectDate,
+  onOpenMonth,
+  onChangeMode,
 }: {
   selectedDate: string;
   weekDates: string[];
   togetherStreak: number;
   habits: Habit[];
   completions: Completions;
+  partnerHere: boolean;
+  mode: HomeMode;
   onSelectDate: (date: string) => void;
+  onOpenMonth: () => void;
+  onChangeMode: (mode: HomeMode) => void;
 }) {
   const t = today();
   const people = usePeople();
@@ -40,7 +51,6 @@ export function CalendarCard({
       weekDates.map((date) => {
         const d = new Date(date + 'T00:00:00');
         return {
-          date,
           label: format(d, 'EEEEE', { locale }),
           num: d.getDate(),
           isSelected: date === selectedDate,
@@ -52,23 +62,31 @@ export function CalendarCard({
     [weekDates, selectedDate, habits, completions, t, locale],
   );
 
-  const title = selectedDate === t ? 'Today' : format(selected, 'EEEE', { locale });
+  const title = mode === 'week' ? 'This week' : selectedDate === t ? 'Today' : format(selected, 'EEEE', { locale });
   const subtitle = format(selected, 'MMMM yyyy', { locale });
+  // A brand-new household's "0 Days" read as a failure before there'd been a
+  // chance to do anything. Until day one, the pill is an invitation instead.
+  const hasStreak = togetherStreak > 0;
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.avatarNameRow}>
-          <View style={styles.avatarStack}>
-            <Avatar person="A" size={34} style={[styles.avatar, { left: 0 }]} />
-            <Avatar person="S" size={34} style={[styles.avatar, { left: 18 }]} />
+          <CoupleAvatars size={34} />
+          <View style={{ flexShrink: 1 }}>
+            <Text style={styles.coupleName} numberOfLines={1}>{people.A.name} &amp; {people.S.name}</Text>
+            {partnerHere && (
+              <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={styles.presenceRow}>
+                <View style={styles.presenceDot} />
+                <Text style={styles.presenceText}>{people.S.joined ? 'Both here right now' : 'Here right now'}</Text>
+              </Animated.View>
+            )}
           </View>
-          <Text style={styles.coupleName}>{people.A.name} &amp; {people.S.name}</Text>
         </View>
-        <View style={styles.streakPill}>
-          <LightningIcon size={14} />
-          <Text style={styles.streakText}>
-            {togetherStreak} {togetherStreak === 1 ? 'Day' : 'Days'}
+        <View style={[styles.streakPill, !hasStreak && styles.streakPillInvite]}>
+          <LightningIcon size={14} color={hasStreak ? S.gold : S.accent} />
+          <Text style={[styles.streakText, !hasStreak && { color: S.accentDeep }]}>
+            {hasStreak ? `${togetherStreak} ${togetherStreak === 1 ? 'Day' : 'Days'}` : 'Start today'}
           </Text>
         </View>
       </View>
@@ -77,7 +95,19 @@ export function CalendarCard({
         <Text style={styles.calTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {title}
         </Text>
-        <Text style={styles.calMonth}>{subtitle}</Text>
+        <View style={styles.calRight}>
+          <View style={styles.modeToggle}>
+            {(['day', 'week'] as HomeMode[]).map((m) => (
+              <Pressable key={m} onPress={() => onChangeMode(m)} style={[styles.modeOption, mode === m && styles.modeOptionActive]} hitSlop={4}>
+                <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{m === 'day' ? 'Day' : 'Week'}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={onOpenMonth} hitSlop={8} style={({ pressed }) => [styles.monthButton, pressed && { opacity: 0.6 }]} accessibilityLabel="Open month view">
+            <Text style={styles.calMonth}>{subtitle}</Text>
+            <ChevronDown size={13} color={S.tertiary} strokeWidth={2.6} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.stripRow}>
@@ -93,7 +123,7 @@ export function CalendarCard({
                 <View
                   style={[
                     styles.pill,
-                    { backgroundColor: filled ? S.accent : d.isSelected ? S.lineSoft : 'transparent' },
+                    { backgroundColor: filled ? S.accent : d.isSelected && mode === 'day' ? S.lineSoft : 'transparent' },
                   ]}
                 />
                 {!filled && (
@@ -154,29 +184,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   avatarNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  avatarStack: {
-    width: 52,
-    height: 34,
-  },
-  avatar: {
-    position: 'absolute',
-    top: 0,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    flexShrink: 1,
   },
   coupleName: {
     fontSize: 15,
     fontWeight: '700',
     color: S.ink900,
+  },
+  presenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  presenceDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: S.accent,
+  },
+  presenceText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: S.accentDeep,
   },
   streakPill: {
     flexDirection: 'row',
@@ -186,7 +222,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 7,
+    flexShrink: 0,
     ...cardShadow,
+  },
+  streakPillInvite: {
+    backgroundColor: S.accentSoft,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   streakText: {
     fontFamily: fonts.bold,
@@ -195,7 +237,7 @@ const styles = StyleSheet.create({
   },
   calHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
     marginTop: 18,
@@ -207,13 +249,45 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     flexShrink: 1,
   },
+  calRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+    flexShrink: 0,
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: S.bg,
+    borderRadius: 999,
+    padding: 3,
+    gap: 2,
+  },
+  modeOption: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  modeOptionActive: {
+    backgroundColor: S.ink900,
+  },
+  modeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: S.ink600,
+  },
+  modeTextActive: {
+    color: '#FFFFFF',
+  },
+  monthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
   calMonth: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: S.tertiary,
-    flexShrink: 0,
   },
   stripRow: {
     flexDirection: 'row',

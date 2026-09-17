@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, Switch, useWindowDimensions, type FlatList } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -15,6 +16,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTasksStore } from '@/store/tasksStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { DEFAULT_REMINDER_BY_BUCKET, formatClock } from '@/lib/reminders';
+import { requestNotificationPermission } from '@/lib/notifications';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -135,9 +139,44 @@ export default function AddHabitScreen() {
     const t = editing?.time ?? 'All day';
     return TIMES.includes(t) ? t : 'All day';
   });
+  // Reminder: "HH:MM" or null. The time-of-day bucket seeds a sensible default
+  // the moment the reminder is switched on, so the bucket finally has teeth.
+  const [reminder, setReminder] = useState<string | null>(editing?.reminderTime ?? null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const notificationsPermission = useSettingsStore((st) => st.notificationsPermission);
+  const setNotificationsPermission = useSettingsStore((st) => st.setNotificationsPermission);
+
+  const toggleReminder = async (on: boolean) => {
+    haptic.tap();
+    if (!on) {
+      setReminder(null);
+      setPickerOpen(false);
+      return;
+    }
+    if (notificationsPermission !== 'granted') {
+      const result = await requestNotificationPermission();
+      setNotificationsPermission(result);
+      if (result !== 'granted') {
+        Alert.alert(
+          result === 'unsupported' ? 'Not available here' : 'Notifications are off',
+          result === 'unsupported'
+            ? "Reminders need a development build on Android — Expo Go can't show notifications there. The time is saved and will work in a real build."
+            : "Enable notifications for Simul in your phone's Settings to get reminders.",
+        );
+      }
+    }
+    setReminder(DEFAULT_REMINDER_BY_BUCKET[timeChoice] ?? '09:00');
+  };
+
+  const reminderDate = (() => {
+    const [h, m] = (reminder ?? '09:00').split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  })();
 
   const scrollX = useSharedValue(MIDDLE_START * SNAP);
-  const carouselRef = React.useRef<{ scrollToOffset: (p: { offset: number; animated?: boolean }) => void }>(null);
+  const carouselRef = React.useRef<FlatList<(typeof PRESETS)[number]>>(null);
   const onCarouselScroll = useAnimatedScrollHandler({ onScroll: (e) => { scrollX.value = e.contentOffset.x; } });
   useEffect(() => {
     carouselRef.current?.scrollToOffset({ offset: MIDDLE_START * SNAP, animated: false });
@@ -161,14 +200,14 @@ export default function AddHabitScreen() {
     if (!trimmed) return;
 
     if (isEdit && editing) {
-      updateHabit(editing.id, { name: trimmed, icon, time });
+      updateHabit(editing.id, { name: trimmed, icon, time, reminderTime: reminder });
       haptic.success();
       close();
       return;
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both' });
+      addHabit({ name: trimmed, time, icon, owner: 'both', reminderTime: reminder });
       haptic.success();
       Alert.alert(
         'Invite sent 💌',
@@ -180,7 +219,7 @@ export default function AddHabitScreen() {
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: 'me' });
+    addHabit({ name: trimmed, time, icon, owner: 'me', reminderTime: reminder });
     haptic.success();
     close();
   };
@@ -281,7 +320,12 @@ export default function AddHabitScreen() {
                 return (
                   <Pressable
                     key={t}
-                    onPress={() => { haptic.tap(); setTimeChoice(t); }}
+                    onPress={() => {
+                      haptic.tap();
+                      setTimeChoice(t);
+                      // Keep the reminder in step with the bucket unless it was customised.
+                      if (reminder && Object.values(DEFAULT_REMINDER_BY_BUCKET).includes(reminder)) setReminder(DEFAULT_REMINDER_BY_BUCKET[t]);
+                    }}
                     style={[s.timeOption, selected && s.timeOptionSelected]}
                   >
                     <Text style={[s.timeOptionText, selected && s.timeOptionTextSelected]} numberOfLines={1} adjustsFontSizeToFit>
@@ -291,6 +335,38 @@ export default function AddHabitScreen() {
                 );
               })}
             </View>
+          </View>
+
+          {/* Reminder */}
+          <Text style={s.sectionLabel}>Reminder</Text>
+          <View style={s.card}>
+            <View style={s.reminderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.fieldLabel}>Daily reminder</Text>
+                <Text style={s.reminderHint}>{reminder ? `Every day at ${formatClock(reminder)}` : 'A gentle nudge at a time you pick'}</Text>
+              </View>
+              <Switch value={reminder !== null} onValueChange={toggleReminder} trackColor={{ false: S.line, true: S.accent }} thumbColor="#FFFFFF" />
+            </View>
+            {reminder !== null && (
+              <>
+                <Pressable onPress={() => { haptic.tap(); setPickerOpen((v) => !v); }} style={({ pressed }) => [s.timeButton, pressed && { opacity: 0.8 }]}>
+                  <Text style={s.timeButtonText}>{formatClock(reminder)}</Text>
+                  <Text style={s.timeButtonHint}>{pickerOpen ? 'Done' : 'Change'}</Text>
+                </Pressable>
+                {pickerOpen && (
+                  <DateTimePicker
+                    value={reminderDate}
+                    mode="time"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, date) => {
+                      if (Platform.OS !== 'ios') setPickerOpen(false);
+                      if (event.type === 'dismissed' || !date) return;
+                      setReminder(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`);
+                    }}
+                  />
+                )}
+              </>
+            )}
           </View>
 
           {mode === 'shared' && !isEdit && (
@@ -503,6 +579,36 @@ const s = StyleSheet.create({
   },
   timeOptionTextSelected: {
     color: '#FFFFFF',
+  },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reminderHint: {
+    fontSize: 12.5,
+    color: S.tertiary,
+    marginTop: -4,
+  },
+  timeButton: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: S.bg,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  timeButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    color: S.ink900,
+  },
+  timeButtonHint: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: S.accentDeep,
   },
   note: {
     marginTop: 14,
