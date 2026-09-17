@@ -11,35 +11,36 @@ All Fovere code, screens, i18n strings and storage keys are gone (see git histor
 - No EAS project / App Store Connect app exists yet for Simul — will need `eas init` (or equivalent) and a new App Store Connect record before any real build/submit.
 - Privacy policy / terms screens were deleted with the rest; they'll need writing fresh (with a real contact address) before any store submission.
 
-## Current app shape (all local, no backend)
+## Backend (Supabase — wired in)
 
-Two people are hardcoded: `'A'` = Franco, `'S'` = Mora (`src/lib/people.ts`, photos in `src/assets/images/couple/`). There's one account and no sync, so **"Mora's side" is simulated**: Settings → Preview → "View the app as" flips `settingsStore.perspective` and every screen re-renders from her side (her mailbox, her checkboxes, her streak). That's how the invite/accept flow and shared completion get demoed on one phone.
+Project **Simul** (org "Fran Galu", ref `kwlrybcpkpvasiwgrzvc`, us-east-1, free tier). Schema lives in `supabase/migrations/` — the first draft schema (households/tasks/…) had real holes (anyone could join any household without the code, self-referencing RLS, partner could tick your boxes) and was replaced while still empty.
 
-Data model (`src/store/tasksStore.ts`, persisted to AsyncStorage as `simul-tasks`):
-- `habits[]` — `owner: 'A' | 'S' | 'both'`, `status: 'active' | 'pending'`, `createdAt`, and for invites `requestedBy`. A shared habit starts as `pending` + `requestedBy` = sender; the other person sees it in the Mailbox and Accept flips it to `active`.
-- `completions[date][habitId] = { A?: true, S?: true }` — per person, per day. A shared habit only counts as done for a day when **both** are true; the Home row shows "waiting for X" / "X finished — your turn" in between.
-- Streaks (`src/lib/streaks.ts`) are computed from that, not stored. Achievements (`src/lib/achievements.ts`) are computed the same way, including the secret ones.
-- `goalsStore.ts` (`simul-goals`) — long-term goals, separate from habits.
-- First launch seeds sample habits + ~a week of history so streaks/badges aren't all zero; Settings → Data can reset to sample or clear everything (that's how to see the empty states).
+- **Auth:** passwordless. The default Supabase email (no custom SMTP) only has a link, so the app handles it as a PKCE deep link (`simul://auth-callback`, `exp://…/--/auth-callback` in Expo Go): the link only works on the phone that requested it; token-in-URL links are ignored. Code entry also works once a custom template includes `{{ .Token }}` (needs SMTP). Redirect URLs `simul://**` and `exp://**` must be allow-listed in Auth → URL Configuration. **Supabase rejects any redirect whose host is an IP address** (falls back to Site URL localhost:3000), so testing sign-in links in Expo Go needs `npx expo start --tunnel` (exp://….exp.direct); dev/prod builds use simul:// and are unaffected. Session tokens in Keychain/Keystore via chunked `expo-secure-store` (`src/lib/secureStorage.ts`), cleared on reinstall. Sign-out is device-local.
+- **Households:** exactly two people. Created/joined only via RPCs (`create_household`, `join_household` — 8-char CSPRNG code, 10 attempts/hour rate limit, 2-member cap), `leave_household` (deletes your personal habits + check-ins, rotates the code), `regenerate_invite_code`, `respond_to_invite`, `delete_account` (store requirement). Slots: 'A' = creator, 'S' = joiner (`src/lib/people.ts` → `useMe`/`usePeople`); avatars are coloured initials now.
+- **Security model:** RLS on everything, anon role has no grants, column-level GRANTs so status/owner/household can't be changed directly, helpers in non-exposed `private` schema. Verified with a rolled-back SQL attack suite and a 31-check end-to-end test against the live API (both passing, test users removed).
+- **Sync:** `tasksStore` is Supabase-backed with optimistic writes (UUIDs generated on device), per-habit/day serialized completion writes, Realtime subscriptions, full resync on reconnect/foreground. Realtime DELETE events can't be filtered and skip RLS, so every table's PK is a random uuid (nothing meaningful leaks) and unknown ids are ignored.
+- **Config:** `.env` (gitignored) holds URL + *publishable* key; `.env.example` is tracked. `src/lib/supabase.ts` refuses to start with a secret/service_role key.
 
-Decided already:
-- Auth: magic link (email), via Supabase Auth
-- Pairing: invite code (one person creates, other joins with a 6-character code)
-- When the backend lands, `perspective` goes away — the signed-in user *is* `me`, and the partner is whoever else is in the household.
+## Avatar upload (photo picker, color, storage)
 
-## Backend (provisioned, not yet wired into the app)
+Onboarding and Settings let each person set a profile photo and pick their own color (/, , public 'avatars' Storage bucket with owner-only write RLS). Upload path:  with  → decode via  → upload the resulting  directly. **Never** read the picked file back off disk (, , etc.) to build the upload body — that's what Supabase's own React Native docs warn against, and concretely broke the library picker (not the camera) in Expo Go here, since a library pick's temp file wasn't reliably readable from JS while a camera capture's was.
 
-Supabase project **Simul** created (org "Fran Galu", ref `kwlrybcpkpvasiwgrzvc`, region us-east-1, free tier).
+**Real bug this surfaced, now fixed:**  flashed  on every re-check, even when the answer ("still no household") hadn't changed. 's app-foreground listener re-runs  on every background→foreground transition, and opening the system photo picker triggers exactly that transition. The  flash swapped 's rendered screen to a splash and back, unmounting  and wiping its in-progress avatar/name/color state — the upload itself always succeeded (confirmed via Storage — files were there the whole time), only the on-screen result was lost. Fixed by keeping  unchanged when a re-check's answer is already settled (has a household, or confidently doesn't). Worth remembering for any future onboarding-flow bug: check whether  is remounting the screen before suspecting the feature itself.
 
-Schema live: `households`, `household_members`, `habits`, `tasks`, `completions` — all RLS-locked per household, realtime enabled on all of them. Join-by-code handled via `join_household_by_code(code, display_name)` RPC (security definer, restricted to authenticated users).
+## Avatar upload (photo picker, color, storage)
 
-Not done yet — deliberately deferred until the UI/product shape above is settled:
-- Installing `@supabase/supabase-js` + `react-native-url-polyfill`
-- `src/lib/supabase.ts` client setup
-- `.env` / `.env.example` with project URL + anon key
-- Magic-link sign-in screen + create/join-household onboarding screens
-- Swapping `tasksStore.ts` / `goalsStore.ts` from AsyncStorage-only to Supabase-backed + realtime subscriptions (the schema's `tasks`/`completions` tables map onto the local shape almost 1:1)
-- Auth gate in navigation (`App.tsx` / `RootNavigator`)
+Onboarding and Settings let each person set a profile photo and pick their own color (`household_members.color`/`avatar_path`, `supabase/migrations/20260917000000_profile_avatar_color.sql`, public 'avatars' Storage bucket with owner-only write RLS). Upload path: `ImagePicker` with `base64: true` → decode via `base64-arraybuffer` → upload the resulting `ArrayBuffer` directly. **Never** read the picked file back off disk (`fetch(asset.uri)`, `expo-file-system`, etc.) to build the upload body — that's what Supabase's own React Native docs warn against, and concretely broke the library picker (not the camera) in Expo Go here, since a library pick's temp file wasn't reliably readable from JS while a camera capture's was.
+
+**Real bug this surfaced, now fixed:** `householdStore.load()` flashed `status: 'loading'` on every re-check, even when the answer ("still no household") hadn't changed. `useSessionSync`'s app-foreground listener re-runs `load()` on every background→foreground transition, and opening the system photo picker triggers exactly that transition. The `'loading'` flash swapped `RootNavigator`'s rendered screen to a splash and back, unmounting `OnboardingScreen` and wiping its in-progress avatar/name/color state — the upload itself always succeeded (confirmed via Storage — files were there the whole time), only the on-screen result was lost. Fixed by keeping `status` unchanged when a re-check's answer is already settled (has a household, or confidently doesn't). Worth remembering for any future onboarding-flow bug: check whether `RootNavigator` is remounting the screen before suspecting the feature itself.
+
+## Dev-only fast sign-in (skips email rate limits)
+
+Two persistent test accounts seeded directly in `auth.users` — `dev-a@simul.test` / `dev-b@simul.test`, password `dev-only-not-a-real-password-8823` — for testing the partner flow (invite/accept/shared habits/realtime) without burning Supabase's default-sender limit (2 emails/hour, shared across the whole project). `AuthScreen` shows a "DEV ONLY" row with two buttons that call `useAuthStore().devSignIn('a' | 'b')` — plain `signInWithPassword`, same auth path as a real user, just skipping the inbox. Gated by `__DEV__`; not part of what a real user is shown or what an App Store review sees (Metro replaces `__DEV__` with a literal and the bundler drops the dead branch in a production/release build). Sign each into a different phone/simulator (or Settings → Sign out and switch) to test both sides.
+
+Still to do on the dashboard / later:
+- Custom SMTP (Resend, Postmark…) before real users — the built-in sender is heavily rate-limited and dev-only.
+- EAS builds need the two `EXPO_PUBLIC_SUPABASE_*` vars set as EAS environment variables.
+- Goals are still device-local (tab hidden). Profile photos (Storage) not built.
 
 ## Dev environment — running the app
 

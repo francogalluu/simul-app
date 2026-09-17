@@ -25,8 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTasksStore } from '@/store/tasksStore';
-import { useSettingsStore } from '@/store/settingsStore';
-import { PEOPLE, partnerOf } from '@/lib/people';
+import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -129,8 +128,9 @@ export default function AddHabitScreen() {
   const habitId = route.params?.habitId;
   const { width: screenWidth } = useWindowDimensions();
 
-  const me = useSettingsStore((st) => st.perspective);
-  const partnerName = PEOPLE[partnerOf(me)].name;
+  const me = useMe();
+  const partner = usePeople()[partnerOf(me)];
+  const partnerName = partner.name;
   const habits = useTasksStore((st) => st.habits);
   const addHabit = useTasksStore((st) => st.addHabit);
   const updateHabit = useTasksStore((st) => st.updateHabit);
@@ -178,17 +178,19 @@ export default function AddHabitScreen() {
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both', status: 'pending', requestedBy: me });
+      addHabit({ name: trimmed, time, icon, owner: 'both' });
       haptic.success();
       Alert.alert(
         'Invite sent 💌',
-        `${partnerName} will find "${trimmed}" in her mailbox. It shows as pending on your Home until she accepts.`,
+        partner.joined
+          ? `${partnerName} will find "${trimmed}" in their mailbox. It shows as pending on your Home until they accept.`
+          : `"${trimmed}" will be waiting in your partner's mailbox as soon as they join with your invite code (Settings → Household).`,
         [{ text: 'OK', onPress: close }],
       );
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: me });
+    addHabit({ name: trimmed, time, icon, owner: 'me' });
     haptic.success();
     close();
   };

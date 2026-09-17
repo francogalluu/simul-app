@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PEOPLE, partnerOf, type Person } from '@/lib/people';
+import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { S, fonts } from '@/lib/simulTheme';
 import type { Habit } from '@/store/tasksStore';
 
@@ -19,10 +19,13 @@ export function HabitActionSheet({
   onDelete: (habit: Habit) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const people = usePeople();
   if (!habit) return null;
 
   const isPendingInvite = habit.status === 'pending';
-  const partnerName = PEOPLE[partnerOf(me)].name;
+  const partnerName = people[partnerOf(me)].name;
+  // Your partner's personal habits are view-only (the server enforces this too).
+  const canManage = habit.owner === 'both' || habit.owner === me;
 
   const confirmDelete = () => {
     Alert.alert(
@@ -50,20 +53,20 @@ export function HabitActionSheet({
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.title} numberOfLines={1}>{habit.name}</Text>
               <Text style={styles.subtitle}>
-                {habit.owner === 'both' ? `Together with ${partnerName}` : habit.owner === me ? 'Just you' : `${PEOPLE[habit.owner].name}'s habit`}
+                {habit.owner === 'both' ? `Together with ${partnerName}` : habit.owner === me ? 'Just you' : `${people[habit.owner].name}'s habit`}
                 {' • '}{habit.time}
               </Text>
             </View>
           </View>
 
-          {!isPendingInvite && (
+          {canManage && !isPendingInvite && (
             <Pressable onPress={() => { onClose(); onEdit(habit); }} style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}>
               <Text style={styles.optionText}>Edit</Text>
             </Pressable>
           )}
-          <Pressable onPress={confirmDelete} style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}>
+          {canManage && <Pressable onPress={confirmDelete} style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}>
             <Text style={[styles.optionText, { color: S.danger }]}>{isPendingInvite ? 'Cancel invite' : 'Delete'}</Text>
-          </Pressable>
+          </Pressable>}
           <Pressable onPress={onClose} style={({ pressed }) => [styles.option, styles.cancel, pressed && styles.optionPressed]}>
             <Text style={[styles.optionText, { color: S.ink600 }]}>Close</Text>
           </Pressable>

@@ -11,6 +11,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { i18n, getDeviceLocale } from './src/i18n';
 import { useSettingsStore } from './src/store/settingsStore';
+import { useAuthStore } from './src/store/authStore';
 
 // Ensure i18n is initialized (side-effect import).
 void i18n;
@@ -34,6 +35,9 @@ function LanguageSync({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const [fontsLoaded] = useFonts({ Lora_400Regular, Lora_700Bold });
+
+  // Restore the Supabase session and listen for sign-in / sign-out.
+  useEffect(() => useAuthStore.getState().init(), []);
 
   if (!fontsLoaded) {
     return (

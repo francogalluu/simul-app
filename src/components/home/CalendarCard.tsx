@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { format } from 'date-fns';
 import { getDateLocale, getWeekDates, isFuture, today } from '@/lib/dates';
-import { PEOPLE } from '@/lib/people';
+import { usePeople } from '@/lib/people';
+import { Avatar } from '@/components/Avatar';
 import { summarizeDay } from '@/lib/streaks';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
 import type { WeekStartDay } from '@/store/settingsStore';
@@ -29,6 +30,7 @@ export function CalendarCard({
   onSelectDate: (date: string) => void;
 }) {
   const t = today();
+  const people = usePeople();
   const selected = new Date(selectedDate + 'T00:00:00');
   const locale = getDateLocale();
 
@@ -57,10 +59,10 @@ export function CalendarCard({
       <View style={styles.headerRow}>
         <View style={styles.avatarNameRow}>
           <View style={styles.avatarStack}>
-            <Image source={PEOPLE.A.avatar} style={[styles.avatar, { left: 0 }]} />
-            <Image source={PEOPLE.S.avatar} style={[styles.avatar, { left: 18 }]} />
+            <Avatar person="A" size={34} style={[styles.avatar, { left: 0 }]} />
+            <Avatar person="S" size={34} style={[styles.avatar, { left: 18 }]} />
           </View>
-          <Text style={styles.coupleName}>{PEOPLE.A.name} &amp; {PEOPLE.S.name}</Text>
+          <Text style={styles.coupleName}>{people.A.name} &amp; {people.S.name}</Text>
         </View>
         <View style={styles.streakPill}>
           <LightningIcon size={14} />
@@ -71,7 +73,9 @@ export function CalendarCard({
       </View>
 
       <View style={styles.calHeaderRow}>
-        <Text style={styles.calTitle}>{title}</Text>
+        <Text style={styles.calTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          {title}
+        </Text>
         <Text style={styles.calMonth}>{subtitle}</Text>
       </View>
 
@@ -121,8 +125,8 @@ export function CalendarCard({
                 </View>
               </View>
               <View style={styles.dotsRow}>
-                <Dot done={d.aDone} future={d.future} color={PEOPLE.A.color} />
-                <Dot done={d.bDone} future={d.future} color={PEOPLE.S.color} />
+                <Dot done={d.aDone} future={d.future} color={people.A.color} />
+                <Dot done={d.bDone} future={d.future} color={people.S.color} />
               </View>
             </Pressable>
           );
@@ -192,6 +196,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
+    gap: 10,
     marginTop: 18,
   },
   calTitle: {
@@ -199,6 +204,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: S.ink900,
     textTransform: 'capitalize',
+    flexShrink: 1,
   },
   calMonth: {
     fontSize: 12,
@@ -206,6 +212,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: S.tertiary,
+    flexShrink: 0,
   },
   stripRow: {
     flexDirection: 'row',

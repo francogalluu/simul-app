@@ -1,15 +1,21 @@
-import React from 'react';
-import { View, Text, Image, Switch, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useTasksStore } from '@/store/tasksStore';
-import { useGoalsStore } from '@/store/goalsStore';
+import { useAuthStore } from '@/store/authStore';
+import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
 import { i18n } from '@/i18n';
-import { PEOPLE, type Person } from '@/lib/people';
+import { partnerOf, useMe, usePeople } from '@/lib/people';
+import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
+import { Avatar } from '@/components/Avatar';
+import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
+import { ColorPicker } from '@/components/ColorPicker';
+
+const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : '—');
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -17,11 +23,24 @@ export default function SettingsScreen() {
     hapticFeedback, setHapticFeedback,
     weekStartsOn, setWeekStartsOn,
     language, setLanguage,
-    perspective, setPerspective,
   } = useSettingsStore();
-  const resetTasks = useTasksStore((s) => s.resetToSample);
-  const clearTasks = useTasksStore((s) => s.clearAll);
-  const clearGoals = useGoalsStore((s) => s.clearAll);
+  const email = useAuthStore((s) => s.session?.user.email);
+  const signOut = useAuthStore((s) => s.signOut);
+  const userId = useAuthStore((s) => s.session?.user.id);
+  const household = useHouseholdStore((s) => s.household);
+  const rename = useHouseholdStore((s) => s.rename);
+  const updateProfile = useHouseholdStore((s) => s.updateProfile);
+  const regenerateInviteCode = useHouseholdStore((s) => s.regenerateInviteCode);
+  const leaveHousehold = useHouseholdStore((s) => s.leaveHousehold);
+  const deleteAccount = useHouseholdStore((s) => s.deleteAccount);
+  const me = useMe();
+  const people = usePeople();
+  const myAvatarPath = useHouseholdStore((s) => s.members.find((m) => m.userId === s.userId)?.avatarPath ?? null);
+  const partner = people[partnerOf(me)];
+
+  const [nameDraft, setNameDraft] = useState(people[me].name);
+  const [busy, setBusy] = useState<null | 'code' | 'leave' | 'delete'>(null);
+  useEffect(() => setNameDraft(people[me].name), [people, me]);
 
   const pickWeekStart = () =>
     Alert.alert(t('alerts.weekStartsOn'), undefined, [
@@ -37,44 +56,130 @@ export default function SettingsScreen() {
       { text: t('common.cancel'), style: 'cancel' },
     ]);
 
-  const confirmReset = () =>
-    Alert.alert(t('settings.resetSample'), t('settings.resetSampleMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.ok'), onPress: () => { haptic.success(); resetTasks(); clearGoals(); } },
-    ]);
-
-  const confirmClear = () =>
-    Alert.alert(t('settings.clearAll'), t('settings.clearAllMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => { haptic.warning(); clearTasks(); clearGoals(); } },
-    ]);
-
-  const switchPerspective = (p: Person) => {
-    if (p === perspective) return;
-    haptic.medium();
-    setPerspective(p);
+  const saveName = async () => {
+    const next = cleanName(nameDraft);
+    if (!next || next === people[me].name) {
+      setNameDraft(people[me].name);
+      return;
+    }
+    const res = await rename(next);
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
   };
+
+  const changeAvatar = async (next: AvatarValue) => {
+    const res = await updateProfile({ avatarPath: next.path });
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
+  };
+
+  const changeColor = async (color: string) => {
+    const res = await updateProfile({ color });
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
+  };
+
+  const shareCode = () => {
+    if (!household?.inviteCode) return;
+    haptic.tap();
+    void Share.share({ message: t('settings.shareMessage', { code: formatCode(household.inviteCode) }) });
+  };
+
+  // Destructive actions show errors inline via Alert and keep the button busy while running.
+  const runAction = async (kind: 'code' | 'leave' | 'delete', action: () => Promise<{ error?: string }>) => {
+    setBusy(kind);
+    const res = await action();
+    setBusy(null);
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
+    else haptic.success();
+  };
+
+  const confirmNewCode = () =>
+    Alert.alert(t('settings.newCodeTitle'), t('settings.newCodeMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.newCode'), onPress: () => runAction('code', regenerateInviteCode) },
+    ]);
+
+  const confirmSignOut = () =>
+    Alert.alert(t('settings.signOut'), t('settings.signOutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.signOut'), style: 'destructive', onPress: () => { haptic.warning(); void signOut(); } },
+    ]);
+
+  const confirmLeave = () =>
+    Alert.alert(t('settings.leave'), t('settings.leaveMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.leave'), style: 'destructive', onPress: () => runAction('leave', leaveHousehold) },
+    ]);
+
+  const confirmDelete = () =>
+    Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => runAction('delete', deleteAccount) },
+    ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t('settings.title')}</Text>
 
-        <Text style={styles.sectionLabel}>{t('settings.preview')}</Text>
+        <Text style={styles.sectionLabel}>{t('settings.profile')}</Text>
+        <View style={[styles.card, styles.profileCard]}>
+          {userId && (
+            <AvatarPicker
+              userId={userId}
+              value={{ path: myAvatarPath, url: people[me].avatarUrl }}
+              color={people[me].color}
+              initial={people[me].initial}
+              size={72}
+              onChange={changeAvatar}
+            />
+          )}
+          <ColorPicker value={people[me].color} onChange={changeColor} />
+        </View>
+
+        <Text style={styles.sectionLabel}>{t('settings.household')}</Text>
         <View style={styles.card}>
-          <Text style={styles.rowLabel}>{t('settings.viewAs')}</Text>
-          <View style={styles.personRow}>
-            {(['A', 'S'] as Person[]).map((p) => {
-              const active = perspective === p;
-              return (
-                <Pressable key={p} onPress={() => switchPerspective(p)} style={[styles.personOption, active && styles.personOptionActive]}>
-                  <Image source={PEOPLE[p].avatar} style={[styles.personAvatar, active && { borderColor: '#FFFFFF' }]} />
-                  <Text style={[styles.personName, active && styles.personNameActive]}>{PEOPLE[p].name}</Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.row}>
+            <View style={styles.personLeft}>
+              <Avatar person={me} size={34} />
+              <Text style={styles.rowLabel}>{t('settings.yourName')}</Text>
+            </View>
+            <TextInput
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              onEndEditing={saveName}
+              onSubmitEditing={saveName}
+              maxLength={MAX_NAME_LENGTH}
+              returnKeyType="done"
+              style={styles.nameInput}
+              accessibilityLabel={t('settings.yourName')}
+            />
           </View>
-          <Text style={styles.hint}>{t('settings.viewAsHint')}</Text>
+          <Divider />
+          <View style={styles.row}>
+            <View style={styles.personLeft}>
+              <Avatar person={partnerOf(me)} size={34} />
+              <Text style={styles.rowLabel}>{t('settings.partner')}</Text>
+            </View>
+            <Text style={styles.rowValue}>{partner.joined ? partner.name : t('settings.partnerNotJoined')}</Text>
+          </View>
+
+          {!partner.joined && (
+            <>
+              <Divider />
+              <View style={styles.inviteBlock}>
+                <Text style={styles.rowLabel}>{t('settings.inviteCode')}</Text>
+                <Text selectable style={styles.code}>{formatCode(household?.inviteCode)}</Text>
+                <Text style={styles.hint}>{t('settings.codeHint')}</Text>
+                <View style={styles.inviteActions}>
+                  <Pressable onPress={shareCode} style={({ pressed }) => [styles.pillButton, styles.pillPrimary, pressed && { opacity: 0.8 }]}>
+                    <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{t('settings.shareCode')}</Text>
+                  </Pressable>
+                  <Pressable onPress={confirmNewCode} disabled={busy != null} style={({ pressed }) => [styles.pillButton, pressed && { opacity: 0.8 }]}>
+                    {busy === 'code' ? <ActivityIndicator color={S.accentDeep} /> : <Text style={styles.pillText}>{t('settings.newCode')}</Text>}
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         <Text style={styles.sectionLabel}>{t('settings.preferences')}</Text>
@@ -96,11 +201,15 @@ export default function SettingsScreen() {
           <Row label={t('settings.weekStartsOn')} value={weekStartsOn === 0 ? t('settings.sunday') : t('settings.monday')} onPress={pickWeekStart} last />
         </View>
 
-        <Text style={styles.sectionLabel}>{t('settings.data')}</Text>
+        <Text style={styles.sectionLabel}>{t('settings.account')}</Text>
         <View style={styles.card}>
-          <Row label={t('settings.resetSample')} onPress={confirmReset} />
+          <Row label={t('settings.email')} value={email ?? '—'} />
           <Divider />
-          <Row label={t('settings.clearAll')} onPress={confirmClear} danger last />
+          <Row label={t('settings.signOut')} onPress={confirmSignOut} />
+          <Divider />
+          <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
+          <Divider />
+          <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
         </View>
 
         <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
@@ -118,6 +227,7 @@ function Row({
   right,
   onPress,
   danger,
+  busy,
   last,
 }: {
   label: string;
@@ -125,15 +235,16 @@ function Row({
   right?: React.ReactNode;
   onPress?: () => void;
   danger?: boolean;
+  busy?: boolean;
   last?: boolean;
 }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [styles.row, pressed && onPress && { opacity: 0.6 }]}>
       <Text style={[styles.rowLabel, danger && { color: S.danger }]}>{label}</Text>
       <View style={styles.rowRight}>
-        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        {value ? <Text style={styles.rowValue} numberOfLines={1}>{value}</Text> : null}
         {right ?? null}
-        {onPress && !right ? <ChevronRight size={18} color={S.muted} strokeWidth={2.4} /> : null}
+        {busy ? <ActivityIndicator color={S.muted} /> : onPress && !right ? <ChevronRight size={18} color={S.muted} strokeWidth={2.4} /> : null}
       </View>
     </Pressable>
   );
@@ -174,6 +285,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     ...cardShadow,
   },
+  profileCard: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    gap: 16,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -191,52 +307,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   rowValue: {
     fontSize: 14,
     color: S.tertiary,
+    flexShrink: 1,
   },
   divider: {
     height: 1,
     backgroundColor: S.lineSoft,
   },
-  personRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  personOption: {
-    flex: 1,
+  personLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: S.bg,
-    borderRadius: 14,
-    padding: 10,
   },
-  personOptionActive: {
-    backgroundColor: S.accent,
+  nameInput: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 15,
+    color: S.ink700,
+    paddingVertical: 4,
   },
-  personAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: 'transparent',
+  inviteBlock: {
+    paddingVertical: 14,
+    gap: 8,
   },
-  personName: {
-    fontSize: 14,
-    fontWeight: '700',
+  code: {
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    letterSpacing: 3,
     color: S.ink900,
-  },
-  personNameActive: {
-    color: '#FFFFFF',
+    textAlign: 'center',
+    marginVertical: 4,
   },
   hint: {
-    marginTop: 12,
-    marginBottom: 10,
     fontSize: 12,
     lineHeight: 17,
     color: S.tertiary,
+    textAlign: 'center',
+  },
+  inviteActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  pillButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: S.bg,
+  },
+  pillPrimary: {
+    backgroundColor: S.accent,
+  },
+  pillText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: S.accentDeep,
   },
 });

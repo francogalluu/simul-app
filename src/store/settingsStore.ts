@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { appStorage } from './storage';
-import type { Person } from '@/lib/people';
+import type { NotificationPermission } from '@/lib/notifications';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,18 +18,17 @@ interface SettingsState {
   darkMode: boolean;
   /** UI language: 'en' | 'es'. undefined = use device locale (set on first app load). */
   language: Language | undefined;
-  /**
-   * Whose side of the app we're looking at. There's only one real account
-   * (no backend yet), so this is how "Mora's side" gets previewed: flip it
-   * and the whole app re-renders from her perspective.
-   */
-  perspective: Person;
+  /** Whether the one-time onboarding notification prompt has been shown. */
+  notificationsPrompted: boolean;
+  /** Last known OS permission result, for the Settings row. null = never asked. */
+  notificationsPermission: NotificationPermission | null;
 
   setHapticFeedback: (enabled: boolean) => void;
   setWeekStartsOn: (day: WeekStartDay) => void;
   setDarkMode: (enabled: boolean) => void;
   setLanguage: (lang: Language) => void;
-  setPerspective: (p: Person) => void;
+  setNotificationsPrompted: (prompted: boolean) => void;
+  setNotificationsPermission: (permission: NotificationPermission) => void;
 }
 
 function toBoolean(v: unknown, fallback: boolean): boolean {
@@ -48,24 +47,32 @@ export const useSettingsStore = create<SettingsState>()(
       weekStartsOn: 1,
       darkMode: false,
       language: undefined,
-      perspective: 'A',
+      notificationsPrompted: false,
+      notificationsPermission: null,
 
       setHapticFeedback: (enabled) => set({ hapticFeedback: enabled }),
       setWeekStartsOn: (day) => set({ weekStartsOn: day }),
       setDarkMode: (enabled) => set({ darkMode: enabled }),
       setLanguage: (lang) => set({ language: lang }),
-      setPerspective: (p) => set({ perspective: p }),
+      setNotificationsPrompted: (prompted) => set({ notificationsPrompted: prompted }),
+      setNotificationsPermission: (permission) => set({ notificationsPermission: permission }),
     }),
     {
       name: 'simul-settings',
       storage: createJSONStorage(() => appStorage),
-      version: 2,
+      // v3: dropped `perspective` (the signed-in account is always "me" now).
+      version: 3,
+      migrate: (persisted) => {
+        const { perspective: _dropped, ...rest } = (persisted ?? {}) as Record<string, unknown>;
+        return rest as unknown as SettingsState;
+      },
       partialize: (s) => ({
         hapticFeedback: s.hapticFeedback,
         weekStartsOn: s.weekStartsOn,
         darkMode: s.darkMode,
         language: s.language,
-        perspective: s.perspective,
+        notificationsPrompted: s.notificationsPrompted,
+        notificationsPermission: s.notificationsPermission,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -75,7 +82,6 @@ export const useSettingsStore = create<SettingsState>()(
         state.darkMode = toBoolean(state.darkMode, false);
         const lang = (state as { language?: unknown }).language;
         if (lang !== 'en' && lang !== 'es') state.language = undefined;
-        if (state.perspective !== 'A' && state.perspective !== 'S') state.perspective = 'A';
       },
     },
   ),

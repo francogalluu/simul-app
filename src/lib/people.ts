@@ -1,17 +1,58 @@
+import { useMemo } from 'react';
 import { S } from './simulTheme';
+import { avatarPublicUrl } from './avatarUpload';
+import { useHouseholdStore } from '@/store/householdStore';
 
-/** The two people in the household. 'A' is Franco, 'S' is Mora. */
+/**
+ * The two people in the household, as slots. 'A' is whoever created the
+ * household, 'S' is the partner who joined with the invite code. Which one
+ * is *me* depends on who's signed in (see `useMe`).
+ */
 export type Person = 'A' | 'S';
 
 /** Who a habit belongs to. 'both' = shared, needs both people to complete it. */
 export type Owner = Person | 'both';
 
-export const PEOPLE: Record<Person, { name: string; color: string; avatar: number }> = {
-  A: { name: 'Franco', color: S.personA, avatar: require('@/assets/images/couple/franco.jpg') },
-  S: { name: 'Mora', color: S.personB, avatar: require('@/assets/images/couple/mora.jpg') },
+export interface PersonInfo {
+  name: string;
+  initial: string;
+  /** Chosen at onboarding (or Settings); falls back to the app default until then. */
+  color: string;
+  avatarUrl: string | null;
+  /** False for slot 'S' until the partner has joined. */
+  joined: boolean;
+}
+
+export type People = Record<Person, PersonInfo>;
+
+const FALLBACK_COLOR: Record<Person, string> = { A: S.personA, S: S.personB };
+const PLACEHOLDER = 'Partner';
+
+const info = (p: Person, member: { displayName: string; color: string; avatarPath: string | null } | undefined): PersonInfo => {
+  const clean = member?.displayName?.trim() || PLACEHOLDER;
+  return {
+    name: clean,
+    initial: Array.from(clean)[0]?.toUpperCase() ?? '?',
+    color: member?.color ?? FALLBACK_COLOR[p],
+    avatarUrl: member?.avatarPath ? avatarPublicUrl(member.avatarPath) : null,
+    joined: Boolean(member),
+  };
 };
 
 export const partnerOf = (p: Person): Person => (p === 'A' ? 'S' : 'A');
 
 /** Does this habit involve this person at all? */
 export const involves = (owner: Owner, p: Person): boolean => owner === 'both' || owner === p;
+
+/** Display info for both slots, from the live household roster. */
+export function usePeople(): People {
+  const members = useHouseholdStore((s) => s.members);
+  return useMemo(() => ({ A: info('A', members[0]), S: info('S', members[1]) }), [members]);
+}
+
+/** The signed-in user's slot. */
+export function useMe(): Person {
+  const userId = useHouseholdStore((s) => s.userId);
+  const members = useHouseholdStore((s) => s.members);
+  return members[1]?.userId === userId ? 'S' : 'A';
+}

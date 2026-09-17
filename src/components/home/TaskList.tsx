@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
-import { PEOPLE, partnerOf, involves, type Person } from '@/lib/people';
+import { partnerOf, usePeople, type Person } from '@/lib/people';
+import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit } from '@/store/tasksStore';
@@ -77,6 +78,7 @@ export function TaskList({
   onAddHabit: () => void;
 }) {
   const partner = partnerOf(me);
+  const people = usePeople();
   const visible = habits.filter(
     (h) => (h.status === 'active' && isHabitActiveOn(h, date)) || (h.status === 'pending' && h.requestedBy === me),
   );
@@ -84,7 +86,7 @@ export function TaskList({
   const sections = [
     { key: 'together', label: 'Together', people: ['A', 'S'] as Person[], items: visible.filter((h) => h.owner === 'both') },
     { key: 'me', label: 'You', people: [me], items: visible.filter((h) => h.owner === me) },
-    { key: 'partner', label: PEOPLE[partner].name, people: [partner], items: visible.filter((h) => h.owner === partner) },
+    { key: 'partner', label: people[partner].name, people: [partner], items: visible.filter((h) => h.owner === partner) },
   ].filter((s) => s.items.length > 0);
 
   if (sections.length === 0) {
@@ -112,11 +114,11 @@ export function TaskList({
               <View style={styles.sectionHeaderLeft}>
                 {section.people.length === 2 ? (
                   <View style={styles.sectionAvatarDuo}>
-                    <Image source={PEOPLE.A.avatar} style={[styles.sectionAvatarDuoImg, { left: 0 }]} />
-                    <Image source={PEOPLE.S.avatar} style={[styles.sectionAvatarDuoImg, { left: 12 }]} />
+                    <Avatar person="A" size={22} style={[styles.sectionAvatarDuoImg, { left: 0 }]} />
+                    <Avatar person="S" size={22} style={[styles.sectionAvatarDuoImg, { left: 12 }]} />
                   </View>
                 ) : (
-                  <Image source={PEOPLE[section.people[0]].avatar} style={styles.sectionAvatarSingle} />
+                  <Avatar person={section.people[0]} size={22} style={styles.sectionAvatarSingle} />
                 )}
                 <Text style={styles.sectionLabel}>{section.label}</Text>
               </View>
@@ -163,7 +165,7 @@ function TaskRow({
   onLongPress: () => void;
 }) {
   const partner = partnerOf(me);
-  const partnerName = PEOPLE[partner].name;
+  const partnerName = usePeople()[partner].name;
   const k = state.kind;
   const isDone = k === 'done' || k === 'partner-only-done';
   const dimmed = k === 'pending-invite';
@@ -177,11 +179,11 @@ function TaskRow({
         <Text style={styles.meta}> • </Text>
         {habit.owner === 'both' ? (
           <View style={styles.metaAvatarDuo}>
-            <Image source={PEOPLE.A.avatar} style={[styles.metaAvatarDuoImg, { left: 0 }]} />
-            <Image source={PEOPLE.S.avatar} style={[styles.metaAvatarDuoImg, { left: 8 }]} />
+            <Avatar person="A" size={14} style={[styles.metaAvatarDuoImg, { left: 0 }]} />
+            <Avatar person="S" size={14} style={[styles.metaAvatarDuoImg, { left: 8 }]} />
           </View>
         ) : (
-          <Image source={PEOPLE[habit.owner].avatar} style={styles.metaAvatarSingle} />
+          <Avatar person={habit.owner} size={14} style={styles.metaAvatarSingle} />
         )}
       </View>
     );
@@ -201,7 +203,7 @@ function TaskRow({
       return (
         <>
           <View style={styles.waitPill}>
-            <Image source={PEOPLE[me].avatar} style={styles.waitAvatar} />
+            <Avatar person={me} size={14} style={styles.waitAvatar} />
             <CheckIcon size={9} color={S.accentDeep} />
           </View>
           <View style={[styles.checkbox, styles.checkboxDone]}>
@@ -214,7 +216,7 @@ function TaskRow({
       return (
         <>
           <View style={styles.waitPill}>
-            <Image source={PEOPLE[partner].avatar} style={styles.waitAvatar} />
+            <Avatar person={partner} size={14} style={styles.waitAvatar} />
             <CheckIcon size={9} color={S.accentDeep} />
           </View>
           <View style={[styles.checkbox, styles.checkboxTodo, { borderColor: S.accent }]} />

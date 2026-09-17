@@ -5,8 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
 import { useGoalsStore } from '@/store/goalsStore';
-import { useSettingsStore } from '@/store/settingsStore';
-import { PEOPLE, partnerOf } from '@/lib/people';
+import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { addMonths, today } from '@/lib/dates';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -26,8 +25,8 @@ export default function AddGoalScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'AddGoal'>>();
   const goalId = route.params?.goalId;
 
-  const me = useSettingsStore((st) => st.perspective);
-  const partnerName = PEOPLE[partnerOf(me)].name;
+  const me = useMe();
+  const partnerName = usePeople()[partnerOf(me)].name;
   const goals = useGoalsStore((st) => st.goals);
   const addGoal = useGoalsStore((st) => st.addGoal);
   const updateGoal = useGoalsStore((st) => st.updateGoal);

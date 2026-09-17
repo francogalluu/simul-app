@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTasksStore, type Habit } from '@/store/tasksStore';
-import { useSettingsStore } from '@/store/settingsStore';
-import { PEOPLE, partnerOf } from '@/lib/people';
+import { partnerOf, useMe, usePeople } from '@/lib/people';
+import { Avatar } from '@/components/Avatar';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -15,9 +15,9 @@ import { EmptyState } from '@/components/EmptyState';
 
 export default function MailboxScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const me = useSettingsStore((s) => s.perspective);
+  const me = useMe();
   const partner = partnerOf(me);
-  const partnerName = PEOPLE[partner].name;
+  const partnerName = usePeople()[partner].name;
   const habits = useTasksStore((s) => s.habits);
   const acceptInvite = useTasksStore((s) => s.acceptInvite);
   const declineInvite = useTasksStore((s) => s.declineInvite);
@@ -49,7 +49,7 @@ export default function MailboxScreen() {
                   <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
                     <View style={styles.card}>
                       <View style={styles.fromRow}>
-                        <Image source={PEOPLE[partner].avatar} style={styles.fromAvatar} />
+                        <Avatar person={partner} size={24} style={styles.fromAvatar} />
                         <Text style={styles.fromText}>
                           <Text style={styles.fromName}>{partnerName}</Text> wants to do this together
                         </Text>

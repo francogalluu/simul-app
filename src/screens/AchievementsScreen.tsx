@@ -3,14 +3,14 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Modal } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useMe } from '@/lib/people';
 import { computeAchievements, type Achievement } from '@/lib/achievements';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function AchievementsScreen() {
-  const me = useSettingsStore((s) => s.perspective);
+  const me = useMe();
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
   const goals = useGoalsStore((s) => s.goals);

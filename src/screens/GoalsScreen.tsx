@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { format } from 'date-fns';
@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
 import { useGoalsStore, type Goal } from '@/store/goalsStore';
-import { PEOPLE } from '@/lib/people';
+import { Avatar } from '@/components/Avatar';
 import { getDateLocale } from '@/lib/dates';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -103,8 +103,8 @@ function GoalCard({ goal, onBump, onLongPress }: { goal: Goal; onBump: (delta: n
             <View style={styles.metaRow}>
               {goal.shared ? (
                 <View style={styles.duo}>
-                  <Image source={PEOPLE.A.avatar} style={[styles.duoImg, { left: 0 }]} />
-                  <Image source={PEOPLE.S.avatar} style={[styles.duoImg, { left: 9 }]} />
+                  <Avatar person="A" size={14} style={[styles.duoImg, { left: 0 }]} />
+                  <Avatar person="S" size={14} style={[styles.duoImg, { left: 9 }]} />
                 </View>
               ) : null}
               <Text style={styles.meta}>

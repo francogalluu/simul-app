@@ -1,10 +1,16 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { SafeAreaView, StyleSheet, useWindowDimensions } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  RefreshControl,
+  ScrollView as GestureHandlerScrollView,
+} from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -15,8 +21,9 @@ import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTasksStore, type Habit } from '@/store/tasksStore';
+import { useHouseholdStore } from '@/store/householdStore';
 import { addDays, getWeekDates, isFuture, today } from '@/lib/dates';
-import { partnerOf } from '@/lib/people';
+import { partnerOf, useMe } from '@/lib/people';
 import { togetherStreak } from '@/lib/streaks';
 import { haptic } from '@/lib/haptics';
 import { S, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -24,6 +31,18 @@ import { HomeTopBar } from '@/components/home/HomeTopBar';
 import { CalendarCard } from '@/components/home/CalendarCard';
 import { TaskList } from '@/components/home/TaskList';
 import { HabitActionSheet } from '@/components/home/HabitActionSheet';
+import { PullRefreshIndicator } from '@/components/home/PullRefreshIndicator';
+
+/** Native spinner is hidden (see RefreshControl below) in favor of PullRefreshIndicator. */
+const TRANSPARENT_REFRESH_COLORS = ['transparent'];
+
+// Plain reanimated Animated.ScrollView wraps RN's own ScrollView, which isn't
+// gesture-handler-aware — its native pan responder (and RefreshControl's)
+// competes ad-hoc with the day-swipe Pan gesture below instead of properly
+// negotiating with it, and can win the very first touch, making that first
+// swipe attempt silently do nothing. Gesture-handler's own ScrollView is
+// coordinated with the rest of RNGH, so the two negotiate correctly.
+const AnimatedScrollView = Animated.createAnimatedComponent(GestureHandlerScrollView);
 
 const SWIPE_DISTANCE = 64;
 const SWIPE_VELOCITY = 650;
@@ -33,7 +52,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
 
-  const me = useSettingsStore((s) => s.perspective);
+  const me = useMe();
   const weekStartsOn = useSettingsStore((s) => s.weekStartsOn);
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
@@ -44,6 +63,7 @@ export default function HomeScreen() {
   const [sheetHabit, setSheetHabit] = useState<Habit | null>(null);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate, weekStartsOn), [selectedDate, weekStartsOn]);
   const ourStreak = useMemo(() => togetherStreak(habits, completions), [habits, completions]);
@@ -137,9 +157,43 @@ export default function HomeScreen() {
     setSheetHabit(habit);
   }, []);
 
+  // ─── Pull to refresh ────────────────────────────────────────────────────────
+  // How far past the top the scroll view has been dragged (iOS reports this
+  // live via a negative offset while bouncing; Android never goes negative,
+  // so there the badge only appears once `refreshing` actually flips true —
+  // still correct, just not live-tracked mid-drag).
+  const pullDistance = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    pullDistance.value = Math.max(0, -e.contentOffset.y);
+  });
+
+  const onRefresh = useCallback(async () => {
+    haptic.tap();
+    setRefreshing(true);
+    // Keeps the animation visible for a beat even when the refetch is instant.
+    const minDuration = new Promise((resolve) => setTimeout(resolve, 700));
+    await Promise.all([useTasksStore.getState().refetch(), useHouseholdStore.getState().refreshMembers(), minDuration]);
+    setRefreshing(false);
+  }, []);
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <PullRefreshIndicator refreshing={refreshing} pullDistance={pullDistance} />
+      <AnimatedScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="transparent"
+            colors={TRANSPARENT_REFRESH_COLORS}
+            progressBackgroundColor="transparent"
+          />
+        }
+      >
         <HomeTopBar
           unreadCount={unread}
           onMailbox={() => navigation.navigate('Mailbox')}
@@ -169,7 +223,7 @@ export default function HomeScreen() {
             />
           </Animated.View>
         </GestureDetector>
-      </ScrollView>
+      </AnimatedScrollView>
 
       <HabitActionSheet
         habit={sheetHabit}

@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
 import { S } from '@/lib/simulTheme';
 
 /** If persist hydration errors or hangs, Zustand never sets hasHydrated — avoid infinite splash. */
 const HYDRATION_FALLBACK_MS = 5_000;
 
-const STORES = [useSettingsStore, useTasksStore, useGoalsStore];
+// Habits/completions come from Supabase and aren't persisted locally.
+const STORES = [useSettingsStore, useGoalsStore];
 const allHydrated = () => STORES.every((s) => s.persist.hasHydrated());
 
 /** Renders children only after every persisted store has rehydrated from AsyncStorage. */

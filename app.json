@@ -2,6 +2,7 @@
   "expo": {
     "name": "Simul",
     "slug": "simul",
+    "scheme": "simul",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -33,13 +34,21 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#008080"
+          "color": "#6bb290"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Simul uses your photos to set your profile picture.",
+          "cameraPermission": "Simul uses your camera to take a profile picture."
         }
       ],
       "@react-native-community/datetimepicker",
       "expo-localization",
       "expo-splash-screen",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store"
     ],
     "owner": "franco-galluzzo"
   }
