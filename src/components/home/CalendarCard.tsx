@@ -70,9 +70,17 @@ export function CalendarCard({
 
   return (
     <View style={styles.card}>
+      {/* Streak headline — the first thing the card says, before who's in it. */}
+      <View style={[styles.streakPill, !hasStreak && styles.streakPillInvite]}>
+        <LightningIcon size={14} color={hasStreak ? S.gold : S.accent} />
+        <Text style={[styles.streakText, !hasStreak && { color: S.accentDeep }]}>
+          {hasStreak ? `${togetherStreak} ${togetherStreak === 1 ? 'Day' : 'Days'}, together` : 'Start your streak today'}
+        </Text>
+      </View>
+
       <View style={styles.headerRow}>
         <View style={styles.avatarNameRow}>
-          <CoupleAvatars size={34} />
+          <CoupleAvatars size={34} ring={false} />
           <View style={{ flexShrink: 1 }}>
             <Text style={styles.coupleName} numberOfLines={1}>{people.A.name} &amp; {people.S.name}</Text>
             {partnerHere && (
@@ -82,12 +90,6 @@ export function CalendarCard({
               </Animated.View>
             )}
           </View>
-        </View>
-        <View style={[styles.streakPill, !hasStreak && styles.streakPillInvite]}>
-          <LightningIcon size={14} color={hasStreak ? S.gold : S.accent} />
-          <Text style={[styles.streakText, !hasStreak && { color: S.accentDeep }]}>
-            {hasStreak ? `${togetherStreak} ${togetherStreak === 1 ? 'Day' : 'Days'}` : 'Start today'}
-          </Text>
         </View>
       </View>
 
@@ -185,6 +187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+    marginTop: 12,
   },
   avatarNameRow: {
     flexDirection: 'row',
@@ -215,6 +218,7 @@ const styles = StyleSheet.create({
     color: S.accentDeep,
   },
   streakPill: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -222,7 +226,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 7,
-    flexShrink: 0,
     ...cardShadow,
   },
   streakPillInvite: {
@@ -267,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   modeOptionActive: {
-    backgroundColor: S.ink900,
+    backgroundColor: S.accent,
   },
   modeText: {
     fontSize: 11,
