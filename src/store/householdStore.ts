@@ -16,6 +16,8 @@ export interface Household {
   inviteCode: string | null;
   /** The couple's own start date (YYYY-MM-DD), for milestone moments. */
   anniversary: string | null;
+  /** Name for the two of them ("Franco & Mora"); null falls back to auto-joining both names. */
+  duoName: string | null;
 }
 
 /** 'none' = signed in but not part of a household yet (show onboarding). */
@@ -38,12 +40,13 @@ interface HouseholdState {
 
   load: (userId: string) => Promise<void>;
   refreshMembers: () => Promise<void>;
-  createHousehold: (displayName: string, profile?: Profile) => Promise<Result>;
+  createHousehold: (displayName: string, profile?: Profile, duoName?: string) => Promise<Result>;
   joinHousehold: (code: string, displayName: string, profile?: Profile) => Promise<Result>;
   regenerateInviteCode: () => Promise<Result>;
   rename: (displayName: string) => Promise<Result>;
   updateProfile: (profile: Profile) => Promise<Result>;
   setAnniversary: (date: string | null) => Promise<Result>;
+  setDuoName: (name: string | null) => Promise<Result>;
   leaveHousehold: () => Promise<Result>;
   deleteAccount: () => Promise<Result>;
   reset: () => void;
@@ -51,6 +54,13 @@ interface HouseholdState {
 
 export const MAX_NAME_LENGTH = 40;
 export const cleanName = (name: string) => name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LENGTH);
+
+export const MAX_DUO_NAME_LENGTH = 60;
+/** Trims/collapses whitespace like cleanName, but empty means "clear it" (null), not "invalid". */
+export const cleanDuoName = (name: string): string | null => {
+  const clean = name.replace(/\s+/g, ' ').trim().slice(0, MAX_DUO_NAME_LENGTH);
+  return clean || null;
+};
 
 type MemberRow = { id: string; user_id: string; display_name: string; color: string; avatar_path: string | null; joined_at: string };
 const toMember = (r: MemberRow): Member => ({
@@ -83,7 +93,7 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     // RLS only returns the caller's own household and roster.
     const fetchOnce = () =>
       Promise.all([
-        supabase.from('households').select('id, invite_code, anniversary').maybeSingle(),
+        supabase.from('households').select('id, invite_code, anniversary, duo_name').maybeSingle(),
         supabase.from('household_members').select('id, user_id, display_name, color, avatar_path, joined_at'),
       ]);
 
@@ -113,7 +123,12 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     }
     set({
       status: 'ready',
-      household: { id: householdRes.data.id, inviteCode: householdRes.data.invite_code, anniversary: householdRes.data.anniversary ?? null },
+      household: {
+        id: householdRes.data.id,
+        inviteCode: householdRes.data.invite_code,
+        anniversary: householdRes.data.anniversary ?? null,
+        duoName: householdRes.data.duo_name ?? null,
+      },
       members: (membersRes.data as MemberRow[]).map(toMember).sort(byJoinOrder),
     });
   },
@@ -123,16 +138,18 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     if (userId) await get().load(userId);
   },
 
-  createHousehold: async (displayName, profile) => {
+  createHousehold: async (displayName, profile, duoName) => {
     const { error } = await supabase.rpc('create_household', { p_display_name: cleanName(displayName) });
     if (error) {
       logError('household.create', error);
       return { error: toAppError(error) };
     }
     await get().refreshMembers();
-    // create_household doesn't take color/avatar, so a household always exists
-    // (with the column default) a moment before this follow-up write lands.
+    // create_household doesn't take color/avatar/duo name, so a household
+    // always exists (with the column defaults) a moment before these
+    // follow-up writes land.
     if (profile) await get().updateProfile(profile);
+    if (duoName != null) await get().setDuoName(cleanDuoName(duoName));
     return {};
   },
 
@@ -196,6 +213,20 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     const { error } = await supabase.from('households').update({ anniversary: date }).eq('id', household.id);
     if (error) {
       logError('household.setAnniversary', error);
+      set({ household: previous });
+      return { error: toAppError(error) };
+    }
+    return {};
+  },
+
+  setDuoName: async (name) => {
+    const household = get().household;
+    if (!household) return { error: 'unknown' };
+    const previous = household;
+    set({ household: { ...household, duoName: name } });
+    const { error } = await supabase.from('households').update({ duo_name: name }).eq('id', household.id);
+    if (error) {
+      logError('household.setDuoName', error);
       set({ household: previous });
       return { error: toAppError(error) };
     }

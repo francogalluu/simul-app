@@ -68,7 +68,8 @@
     "remindersHint": "Elegí una hora por hábito al crearlo o editarlo.",
     "dangerZone": "Con cuidado",
     "dangerZoneHint": "Esto no se puede deshacer.",
-    "notificationsDenied": "Las notificaciones de Simul están desactivadas. Activalas en los Ajustes del teléfono."
+    "notificationsDenied": "Las notificaciones de Simul están desactivadas. Activalas en los Ajustes del teléfono.",
+    "duoName": "Nombre de la pareja"
   },
   "alerts": {
     "weekStartsOn": "La semana empieza el"
@@ -119,7 +120,10 @@
     "next": "Siguiente",
     "colorTitle": "Elegí tu color",
     "colorBody": "Marca tus check-ins y tu lado de cada hábito compartido.",
-    "togetherTitle": "Ahora, ustedes dos"
+    "togetherTitle": "Ahora, ustedes dos",
+    "duoNameLabel": "Nombre para ustedes dos",
+    "duoNamePlaceholder": "{{name}} y Pareja",
+    "duoNameHint": "Opcional — se muestra en la app en vez de sus dos nombres. Podés cambiarlo después en Ajustes."
   },
   "errors": {
     "syncTitle": "No se pudo guardar",

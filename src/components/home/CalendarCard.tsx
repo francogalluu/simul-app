@@ -9,9 +9,9 @@ import { getDateLocale, isFuture, today } from '@/lib/dates';
 import { usePeople } from '@/lib/people';
 import { CoupleAvatars } from '@/components/CoupleAvatars';
 import { summarizeDay } from '@/lib/streaks';
+import { useHouseholdStore } from '@/store/householdStore';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
 import type { Completions, Habit } from '@/store/tasksStore';
-import { LightningIcon } from './HomeTopBar';
 
 const RING_RADIUS = 15;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -21,7 +21,6 @@ export type HomeMode = 'day' | 'week';
 export function CalendarCard({
   selectedDate,
   weekDates,
-  togetherStreak,
   habits,
   completions,
   partnerHere,
@@ -32,7 +31,6 @@ export function CalendarCard({
 }: {
   selectedDate: string;
   weekDates: string[];
-  togetherStreak: number;
   habits: Habit[];
   completions: Completions;
   partnerHere: boolean;
@@ -43,6 +41,7 @@ export function CalendarCard({
 }) {
   const t = today();
   const people = usePeople();
+  const duoName = useHouseholdStore((s) => s.household?.duoName ?? null);
   const selected = new Date(selectedDate + 'T00:00:00');
   const locale = getDateLocale();
 
@@ -64,25 +63,15 @@ export function CalendarCard({
 
   const title = mode === 'week' ? 'This week' : selectedDate === t ? 'Today' : format(selected, 'EEEE', { locale });
   const subtitle = format(selected, 'MMMM yyyy', { locale });
-  // A brand-new household's "0 Days" read as a failure before there'd been a
-  // chance to do anything. Until day one, the pill is an invitation instead.
-  const hasStreak = togetherStreak > 0;
+  const coupleName = duoName || `${people.A.name} & ${people.S.name}`;
 
   return (
     <View style={styles.card}>
-      {/* Streak headline — the first thing the card says, before who's in it. */}
-      <View style={[styles.streakPill, !hasStreak && styles.streakPillInvite]}>
-        <LightningIcon size={14} color={hasStreak ? S.gold : S.accent} />
-        <Text style={[styles.streakText, !hasStreak && { color: S.accentDeep }]}>
-          {hasStreak ? `${togetherStreak} ${togetherStreak === 1 ? 'Day' : 'Days'}, together` : 'Start your streak today'}
-        </Text>
-      </View>
-
       <View style={styles.headerRow}>
         <View style={styles.avatarNameRow}>
           <CoupleAvatars size={34} ring={false} />
           <View style={{ flexShrink: 1 }}>
-            <Text style={styles.coupleName} numberOfLines={1}>{people.A.name} &amp; {people.S.name}</Text>
+            <Text style={styles.coupleName} numberOfLines={1}>{coupleName}</Text>
             {partnerHere && (
               <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={styles.presenceRow}>
                 <View style={styles.presenceDot} />
@@ -91,25 +80,23 @@ export function CalendarCard({
             )}
           </View>
         </View>
+        <View style={styles.modeToggle}>
+          {(['day', 'week'] as HomeMode[]).map((m) => (
+            <Pressable key={m} onPress={() => onChangeMode(m)} style={[styles.modeOption, mode === m && styles.modeOptionActive]} hitSlop={4}>
+              <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{m === 'day' ? 'Day' : 'Week'}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <View style={styles.calHeaderRow}>
         <Text style={styles.calTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {title}
         </Text>
-        <View style={styles.calRight}>
-          <View style={styles.modeToggle}>
-            {(['day', 'week'] as HomeMode[]).map((m) => (
-              <Pressable key={m} onPress={() => onChangeMode(m)} style={[styles.modeOption, mode === m && styles.modeOptionActive]} hitSlop={4}>
-                <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>{m === 'day' ? 'Day' : 'Week'}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable onPress={onOpenMonth} hitSlop={8} style={({ pressed }) => [styles.monthButton, pressed && { opacity: 0.6 }]} accessibilityLabel="Open month view">
-            <Text style={styles.calMonth}>{subtitle}</Text>
-            <ChevronDown size={13} color={S.tertiary} strokeWidth={2.6} />
-          </Pressable>
-        </View>
+        <Pressable onPress={onOpenMonth} hitSlop={8} style={({ pressed }) => [styles.monthButton, pressed && { opacity: 0.6 }]} accessibilityLabel="Open month view">
+          <Text style={styles.calMonth}>{subtitle}</Text>
+          <ChevronDown size={13} color={S.tertiary} strokeWidth={2.6} />
+        </Pressable>
       </View>
 
       <View style={styles.stripRow}>
@@ -187,7 +174,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 12,
   },
   avatarNameRow: {
     flexDirection: 'row',
@@ -217,27 +203,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: S.accentDeep,
   },
-  streakPill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    ...cardShadow,
-  },
-  streakPillInvite: {
-    backgroundColor: S.accentSoft,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  streakText: {
-    fontFamily: fonts.bold,
-    fontSize: 13,
-    color: S.ink900,
-  },
   calHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,17 +217,13 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     flexShrink: 1,
   },
-  calRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-    flexShrink: 0,
-  },
   modeToggle: {
     flexDirection: 'row',
     backgroundColor: S.bg,
     borderRadius: 999,
     padding: 3,
     gap: 2,
+    flexShrink: 0,
   },
   modeOption: {
     paddingHorizontal: 10,

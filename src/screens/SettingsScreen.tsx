@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
-import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
+import { useHouseholdStore, cleanName, cleanDuoName, MAX_NAME_LENGTH, MAX_DUO_NAME_LENGTH } from '@/store/householdStore';
 import { i18n } from '@/i18n';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { errorMessage } from '@/lib/errors';
@@ -39,6 +39,7 @@ export default function SettingsScreen() {
   const rename = useHouseholdStore((s) => s.rename);
   const updateProfile = useHouseholdStore((s) => s.updateProfile);
   const setAnniversary = useHouseholdStore((s) => s.setAnniversary);
+  const setDuoName = useHouseholdStore((s) => s.setDuoName);
   const regenerateInviteCode = useHouseholdStore((s) => s.regenerateInviteCode);
   const leaveHousehold = useHouseholdStore((s) => s.leaveHousehold);
   const deleteAccount = useHouseholdStore((s) => s.deleteAccount);
@@ -48,9 +49,11 @@ export default function SettingsScreen() {
   const partner = people[partnerOf(me)];
 
   const [nameDraft, setNameDraft] = useState(people[me].name);
+  const [duoNameDraft, setDuoNameDraft] = useState(household?.duoName ?? '');
   const [busy, setBusy] = useState<null | 'code' | 'leave' | 'delete'>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   useEffect(() => setNameDraft(people[me].name), [people, me]);
+  useEffect(() => setDuoNameDraft(household?.duoName ?? ''), [household?.duoName]);
 
   const pickWeekStart = () =>
     Alert.alert(t('alerts.weekStartsOn'), undefined, [
@@ -73,6 +76,13 @@ export default function SettingsScreen() {
       return;
     }
     const res = await rename(next);
+    if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
+  };
+
+  const saveDuoName = async () => {
+    const next = cleanDuoName(duoNameDraft);
+    if (next === (household?.duoName ?? null)) return;
+    const res = await setDuoName(next);
     if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
   };
 
@@ -202,6 +212,22 @@ export default function SettingsScreen() {
               <Text style={styles.rowLabel}>{t('settings.partner')}</Text>
             </View>
             <Text style={styles.rowValue}>{partner.joined ? partner.name : t('settings.partnerNotJoined')}</Text>
+          </View>
+          <Divider />
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{t('settings.duoName')}</Text>
+            <TextInput
+              value={duoNameDraft}
+              onChangeText={setDuoNameDraft}
+              onEndEditing={saveDuoName}
+              onSubmitEditing={saveDuoName}
+              placeholder={`${people.A.name} & ${people.S.name}`}
+              placeholderTextColor={S.muted}
+              maxLength={MAX_DUO_NAME_LENGTH}
+              returnKeyType="done"
+              style={styles.nameInput}
+              accessibilityLabel={t('settings.duoName')}
+            />
           </View>
           <Divider />
           <Row label={t('settings.anniversary')} value={anniversaryLabel} onPress={() => { haptic.tap(); setDatePickerOpen((v) => !v); }} />

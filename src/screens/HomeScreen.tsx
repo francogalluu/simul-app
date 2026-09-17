@@ -228,6 +228,7 @@ export default function HomeScreen() {
         }
       >
         <HomeTopBar
+          streakDays={ourStreak}
           unreadCount={unread}
           onMailbox={() => navigation.navigate('Mailbox')}
           onAchievements={() => navigation.navigate('Achievements')}
@@ -251,7 +252,6 @@ export default function HomeScreen() {
             <CalendarCard
               selectedDate={selectedDate}
               weekDates={weekDates}
-              togetherStreak={ourStreak}
               habits={habits}
               completions={completions}
               partnerHere={partnerHere}

@@ -52,18 +52,26 @@ function MedalIcon({ size = 24 }: { size?: number }) {
 }
 
 export function HomeTopBar({
+  streakDays,
   unreadCount,
   onMailbox,
   onAchievements,
 }: {
+  /** Together streak, in days. 0 renders as an invitation instead of a failure. */
+  streakDays: number;
   unreadCount: number;
   onMailbox: () => void;
   onAchievements: () => void;
 }) {
+  const hasStreak = streakDays > 0;
   return (
     <View style={styles.row}>
       <Text style={styles.brand}>Simul</Text>
       <View style={styles.right}>
+        <View style={[styles.streakPill, !hasStreak && styles.streakPillInvite]}>
+          <LightningIcon size={13} color={hasStreak ? S.gold : S.accent} />
+          <Text style={[styles.streakText, !hasStreak && { color: S.accentDeep }]}>{hasStreak ? `${streakDays}d` : 'Start'}</Text>
+        </View>
         <Pressable accessibilityLabel="Mailbox" onPress={onMailbox} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
           <MailboxIcon size={24} />
           {unreadCount > 0 && (
@@ -96,8 +104,28 @@ const styles = StyleSheet.create({
   right: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexShrink: 1,
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 47,
+    borderRadius: 23.5,
+    paddingHorizontal: 12,
+    backgroundColor: S.card,
+    ...cardShadow,
+  },
+  streakPillInvite: {
+    backgroundColor: S.accentSoft,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  streakText: {
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    color: S.ink900,
   },
   iconButton: {
     width: 47,

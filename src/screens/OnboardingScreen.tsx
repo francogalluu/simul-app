@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useAuthStore } from '@/store/authStore';
-import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
+import { useHouseholdStore, cleanName, MAX_NAME_LENGTH, MAX_DUO_NAME_LENGTH } from '@/store/householdStore';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { randomAvatarColor } from '@/lib/avatarColors';
@@ -39,6 +39,7 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'choose' | 'join'>('choose');
   const [name, setName] = useState('');
+  const [duoName, setDuoName] = useState('');
   const [code, setCode] = useState('');
   const [avatar, setAvatar] = useState<AvatarValue>({ path: null, url: null });
   const [color, setColor] = useState<string>(randomAvatarColor);
@@ -74,7 +75,7 @@ export default function OnboardingScreen() {
     setBusy(kind);
     setError(null);
     const profile = { color, avatarPath: avatar.path };
-    const res = kind === 'create' ? await createHousehold(name, profile) : await joinHousehold(code, name, profile);
+    const res = kind === 'create' ? await createHousehold(name, profile, duoName) : await joinHousehold(code, name, profile);
     // On success the navigator swaps to the app; only handle failures here.
     if (res.error) {
       setBusy(null);
@@ -165,6 +166,15 @@ export default function OnboardingScreen() {
 
               {mode === 'choose' ? (
                 <View style={styles.form}>
+                  <TextField
+                    label={t('onboarding.duoNameLabel')}
+                    value={duoName}
+                    onChangeText={setDuoName}
+                    placeholder={t('onboarding.duoNamePlaceholder', { name: cleanName(name) || 'You' })}
+                    maxLength={MAX_DUO_NAME_LENGTH}
+                    returnKeyType="done"
+                  />
+                  <Text style={styles.hint}>{t('onboarding.duoNameHint')}</Text>
                   <View style={styles.option}>
                     <PrimaryButton label={t('onboarding.create')} onPress={() => run('create')} loading={busy === 'create'} disabled={busy != null} />
                     <Text style={styles.hint}>{t('onboarding.createHint')}</Text>

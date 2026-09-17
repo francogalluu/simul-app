@@ -68,7 +68,8 @@
     "remindersHint": "Set a time per habit when adding or editing it.",
     "dangerZone": "Careful",
     "dangerZoneHint": "These can't be undone.",
-    "notificationsDenied": "Notifications are off for Simul. Turn them on in your phone's Settings."
+    "notificationsDenied": "Notifications are off for Simul. Turn them on in your phone's Settings.",
+    "duoName": "Duo name"
   },
   "alerts": {
     "weekStartsOn": "Week starts on"
@@ -119,7 +120,10 @@
     "next": "Next",
     "colorTitle": "Pick your color",
     "colorBody": "It marks your check-ins and your side of every shared habit.",
-    "togetherTitle": "Now, the two of you"
+    "togetherTitle": "Now, the two of you",
+    "duoNameLabel": "Name for the two of you",
+    "duoNamePlaceholder": "{{name}} & Partner",
+    "duoNameHint": "Optional — shown across the app instead of both your names. You can change it later in Settings."
   },
   "errors": {
     "syncTitle": "Couldn't save that",
