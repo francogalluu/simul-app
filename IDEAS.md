@@ -10,16 +10,10 @@ A local notification around each habit's stored time-of-day (Morning/Afternoon/E
 ### Nudge partner
 A button on a shared habit your partner hasn't completed yet ("Franco is waiting for you 🌱") that sends them a push. Needs real push notifications (Expo push tokens stored server-side, an Edge Function or small server call to trigger a push through Expo's push service) rather than just local notifications — bigger than it looks at first, because "remind myself" (local) and "notify someone else's phone" (remote/push) are different systems.
 
-### Reaction on completion
-Partner finishes a shared habit → you get a push with a 🔥/❤️/💪 you can tap back, shown as a small badge on that habit row. Same remote-push dependency as the nudge feature above; worth building together.
-
 ## Bigger swings
 
 ### Live presence
 "Mora is here right now" when your partner has the app open — using Supabase Realtime's Presence API (separate from the postgres_changes subscriptions already used in `tasksStore`/`useSessionSync`). Very on-brand for an app literally named "at the same time," and a nice payoff for the realtime infrastructure already in place.
-
-### Streak freeze / grace token
-Earn one "pass" a week (or month) so a single missed day doesn't reset a shared streak. Needs a schema decision: either a stored grace-token balance per household, or make `streaks.ts`'s streak calculation grace-aware (skip up to N gap days per period). The Duolingo-style reasoning: habit trackers that punish one bad day tend to make people quit around day 20-40; a grace mechanism keeps a couple's shared streak resilient instead of a source of guilt.
 
 ### Home screen widget
 Today's shared habits + streak on the phone's actual home screen, tappable to complete without opening the app. Needs native config (iOS WidgetKit target / Android App Widget), which means leaving Expo Go entirely for this feature — requires a custom dev client or EAS build either way. The most native-code-heavy idea on this list.
@@ -65,9 +59,6 @@ Language and haptics sit in the same weight as "delete account." Nothing's actua
 All errors, big or small, interrupt via native `Alert.alert`. Right call for something serious, but a dropped connection on a routine habit toggle probably deserves a quieter, dismissable toast instead.
 
 ## UI — visual direction
-
-### No dark mode, despite the plumbing existing
-`settingsStore.darkMode` is a leftover flag, explicitly disconnected because "Simul screens are light-only." Given how much warmth just went into the light theme (cream background, Nunito/Lora pairing), a proper dark variant feels like the natural next visual milestone.
 
 ### Glass/blur surfaces
 Leaning into the Liquid Glass look from Mural that sparked the font/background work: a frosted-glass treatment (via `expo-blur`) on the tab bar and modal sheets would carry that aesthetic interest beyond just the background gradient.
