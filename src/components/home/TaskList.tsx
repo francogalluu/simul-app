@@ -2,13 +2,14 @@ import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
+import { Camera } from 'lucide-react-native';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn, isPausedNow, isPausedOn } from '@/lib/streaks';
 import { CoupleAvatars } from '@/components/CoupleAvatars';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
-import type { Completions, Habit } from '@/store/tasksStore';
+import type { Completions, Habit, ProofStatuses, Proofs } from '@/store/tasksStore';
 import { EmptyState } from '@/components/EmptyState';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -66,6 +67,8 @@ export function TaskList({
   readOnly,
   habits,
   completions,
+  proofs,
+  proofStatuses,
   celebratingId,
   onToggle,
   onLongPress,
@@ -76,6 +79,8 @@ export function TaskList({
   readOnly: boolean;
   habits: Habit[];
   completions: Completions;
+  proofs: Proofs;
+  proofStatuses: ProofStatuses;
   celebratingId: string | null;
   onToggle: (habit: Habit) => void;
   onLongPress: (habit: Habit) => void;
@@ -126,18 +131,25 @@ export function TaskList({
               <Text style={styles.sectionCount}>{doneCount}/{countable}</Text>
             </View>
             <View style={styles.sectionCard}>
-              {section.items.map((habit) => (
-                <TaskRow
-                  key={habit.id}
-                  habit={habit}
-                  me={me}
-                  state={rowState(habit, completions, date, me)}
-                  readOnly={readOnly}
-                  celebrating={celebratingId === habit.id}
-                  onToggle={() => onToggle(habit)}
-                  onLongPress={() => onLongPress(habit)}
-                />
-              ))}
+              {section.items.map((habit) => {
+                const partnerStatus = proofStatuses[date]?.[habit.id]?.[partnerOf(me)];
+                const hasPhoto = Boolean(proofs[date]?.[habit.id]?.A || proofs[date]?.[habit.id]?.S);
+                const needsMyValidation = habit.requireProof && partnerStatus === 'pending';
+                return (
+                  <TaskRow
+                    key={habit.id}
+                    habit={habit}
+                    me={me}
+                    state={rowState(habit, completions, date, me)}
+                    readOnly={readOnly}
+                    hasPhoto={hasPhoto}
+                    needsValidation={needsMyValidation}
+                    celebrating={celebratingId === habit.id}
+                    onToggle={() => onToggle(habit)}
+                    onLongPress={() => onLongPress(habit)}
+                  />
+                );
+              })}
             </View>
           </View>
         );
@@ -153,6 +165,8 @@ function TaskRow({
   me,
   state,
   readOnly,
+  hasPhoto,
+  needsValidation,
   celebrating,
   onToggle,
   onLongPress,
@@ -161,6 +175,8 @@ function TaskRow({
   me: Person;
   state: RowState;
   readOnly: boolean;
+  hasPhoto: boolean;
+  needsValidation: boolean;
   celebrating: boolean;
   onToggle: () => void;
   onLongPress: () => void;
@@ -171,14 +187,23 @@ function TaskRow({
   const isDone = k === 'done' || k === 'partner-only-done';
   const dimmed = k === 'pending-invite' || k === 'paused';
   const pausedNow = k === 'paused' && isPausedNow(habit);
-  const canToggle = !readOnly && (k === 'todo' || k === 'done' || k === 'waiting-partner' || k === 'partner-waiting');
+  // A "requires proof" habit can't be *completed* by a plain tap — the photo
+  // flow lives in the sheet, so tapping opens that instead while my part is
+  // still outstanding ('todo', or the partner already did theirs and I
+  // haven't). Once I've submitted (or the pair is fully done), a plain tap
+  // goes back to behaving like a normal checkbox, so undoing still works.
+  const myPartOutstanding = k === 'todo' || k === 'partner-waiting';
+  const requiresProofFlow = habit.requireProof && myPartOutstanding;
+  const canToggle = !readOnly && !requiresProofFlow && (k === 'todo' || k === 'done' || k === 'waiting-partner' || k === 'partner-waiting');
+  const opensSheet = !readOnly && requiresProofFlow;
 
   const meta = (() => {
     if (k === 'pending-invite') return <Text style={styles.meta}>Waiting for {partnerName} to accept</Text>;
     if (k === 'paused') return <Text style={styles.meta}>{pausedNow ? 'Paused — long-press to resume' : 'Skipped this day'}</Text>;
+    if (needsValidation) return <Text style={[styles.meta, styles.metaUrgent]}>📸 {partnerName} sent proof — needs your OK</Text>;
     return (
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>{habit.time}</Text>
+        <Text style={[styles.meta, requiresProofFlow && styles.metaUrgent]}>{requiresProofFlow ? 'Tap for photo' : habit.time}</Text>
         <Text style={styles.meta}> • </Text>
         {habit.owner === 'both' ? (
           <View style={styles.metaAvatarDuo}>
@@ -249,13 +274,18 @@ function TaskRow({
 
   return (
     <Pressable
-      onPress={canToggle ? onToggle : undefined}
+      onPress={canToggle ? onToggle : opensSheet ? onLongPress : undefined}
       onLongPress={onLongPress}
       delayLongPress={320}
-      style={({ pressed }) => [styles.row, dimmed && styles.rowDimmed, pressed && canToggle && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, dimmed && styles.rowDimmed, pressed && (canToggle || opensSheet) && styles.rowPressed]}
     >
       <View style={styles.iconWrap}>
         <Text style={styles.iconText}>{habit.icon}</Text>
+        {hasPhoto && (
+          <View style={[styles.cameraBadge, needsValidation && styles.cameraBadgeUrgent]}>
+            <Camera size={9} color="#FFFFFF" strokeWidth={3} />
+          </View>
+        )}
       </View>
 
       <View style={styles.textWrap}>
@@ -358,6 +388,22 @@ const styles = StyleSheet.create({
   iconText: {
     fontSize: 17,
   },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: S.ink600,
+    borderWidth: 1.5,
+    borderColor: S.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadgeUrgent: {
+    backgroundColor: S.amber,
+  },
   textWrap: {
     flex: 1,
     minWidth: 0,
@@ -380,6 +426,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: S.tertiary,
     marginTop: 2,
+  },
+  metaUrgent: {
+    color: S.amber,
+    fontWeight: '700',
   },
   metaRow: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@ import { supabase, toAppError, logError } from '@/lib/supabase';
 import { showSyncError } from '@/lib/errors';
 import { addDays, today } from '@/lib/dates';
 import type { Owner, Person } from '@/lib/people';
-import { notifyInvite, notifyNudge } from '@/lib/inAppNotifications';
+import { notifyInvite, notifyNudge, notifyProofApproved, notifyProofPending, notifyProofRejected } from '@/lib/inAppNotifications';
 import type { Member } from './householdStore';
 
 // Habits + completions for the signed-in user's household, synced with Supabase.
@@ -42,12 +42,17 @@ export interface Habit {
   reminderTime: string | null;
   /** Paused stretches; days inside one don't count for or against a streak. */
   pauses: Pause[];
+  /** Completing this habit means submitting a photo the other person signs off on. */
+  requireProof: boolean;
 }
 
 /** completions[date][habitId] = which people completed it that day. */
 export type Completions = Record<string, Record<string, Partial<Record<Person, boolean>>>>;
 /** proofs[date][habitId][person] = public URL of the photo they attached. */
 export type Proofs = Record<string, Record<string, Partial<Record<Person, string>>>>;
+export type ProofStatus = 'pending' | 'approved';
+/** proofStatuses[date][habitId][person] = where their proof-of-work photo stands. */
+export type ProofStatuses = Record<string, Record<string, Partial<Record<Person, ProofStatus>>>>;
 
 export interface HabitDraft {
   name: string;
@@ -56,6 +61,7 @@ export interface HabitDraft {
   owner: 'me' | 'both';
   icon: string;
   reminderTime?: string | null;
+  requireProof?: boolean;
 }
 
 type SyncStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -73,6 +79,7 @@ interface HabitRow {
   created_at: string;
   reminder_time: string | null;
   pauses: unknown;
+  require_proof: boolean;
 }
 
 interface CompletionRow {
@@ -81,6 +88,7 @@ interface CompletionRow {
   user_id: string;
   date: string;
   proof_path: string | null;
+  proof_status: ProofStatus | null;
 }
 
 interface NudgeRow {
@@ -97,6 +105,7 @@ interface TasksState {
   habits: Habit[];
   completions: Completions;
   proofs: Proofs;
+  proofStatuses: ProofStatuses;
   /** `${habitId}|${date}` → who sent a nudge about it (either direction). */
   nudges: Record<string, Person>;
 
@@ -106,11 +115,11 @@ interface TasksState {
   stop: () => void;
 
   addHabit: (draft: HabitDraft) => string;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'reminderTime'>>) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'reminderTime' | 'requireProof'>>) => void;
   removeHabit: (id: string) => void;
   acceptInvite: (id: string) => void;
   declineInvite: (id: string) => void;
-  /** Flip my completion of a habit on a date. Returns the new completion state for that habit/date. */
+  /** Flip my completion of a habit on a date. No-op for a not-yet-done "requires proof" habit — use submitProof. */
   toggleCompletion: (habitId: string, date: string, person: Person) => Partial<Record<Person, boolean>>;
 
   /** Pause from today until resumed. History and streak are kept. */
@@ -120,14 +129,18 @@ interface TasksState {
   skipDay: (id: string, date: string) => void;
   /** Attach (or remove) a proof photo to my completion of a habit on a date. */
   setProof: (habitId: string, date: string, path: string | null) => void;
+  /** Complete a "requires proof" habit by submitting the photo itself. */
+  submitProof: (habitId: string, date: string, path: string) => Promise<boolean>;
+  /** Approve or reject my partner's pending proof; a reject undoes their completion so they can redo it. */
+  validateProof: (habitId: string, date: string, person: Person, decision: 'approve' | 'reject') => Promise<boolean>;
   /** Ping the partner about a shared habit they haven't done yet today. */
   sendNudge: (habitId: string, date: string) => Promise<boolean>;
 }
 
 export const MAX_HABIT_NAME = 80;
 const TIMES: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'All day'];
-const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, reminder_time, pauses';
-const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path';
+const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, reminder_time, pauses, require_proof';
+const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path, proof_status';
 const PAGE = 1000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -176,7 +189,7 @@ export function proofPublicUrl(path: string): string {
   return supabase.storage.from('habit-proofs').getPublicUrl(path).data.publicUrl;
 }
 
-function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs' | 'nudges'> {
+function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs' | 'proofStatuses' | 'nudges'> {
   const habits: Habit[] = [];
   for (const row of Object.values(habitRows).sort((a, b) => a.created_at.localeCompare(b.created_at))) {
     const owner: Owner | undefined = row.owner_id == null ? 'both' : slots[row.owner_id];
@@ -192,22 +205,25 @@ function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs' | 'nudge
       requestedBy: row.requested_by ? slots[row.requested_by] : undefined,
       reminderTime: toClock(row.reminder_time),
       pauses: parsePauses(row.pauses),
+      requireProof: row.require_proof,
     });
   }
   const completions: Completions = {};
   const proofs: Proofs = {};
+  const proofStatuses: ProofStatuses = {};
   for (const row of Object.values(completionRows)) {
     const person = slots[row.user_id];
     if (!person || !habitRows[row.habit_id]) continue;
     ((completions[row.date] ??= {})[row.habit_id] ??= {})[person] = true;
     if (row.proof_path) ((proofs[row.date] ??= {})[row.habit_id] ??= {})[person] = proofPublicUrl(row.proof_path);
+    if (row.proof_status) ((proofStatuses[row.date] ??= {})[row.habit_id] ??= {})[person] = row.proof_status;
   }
   const nudges: Record<string, Person> = {};
   for (const n of Object.values(nudgeRows)) {
     const from = slots[n.from_user];
     if (from) nudges[`${n.habit_id}|${n.date}`] = from;
   }
-  return { habits, completions, proofs, nudges };
+  return { habits, completions, proofs, proofStatuses, nudges };
 }
 
 async function fetchAll<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
@@ -302,6 +318,16 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const row = id ? completionRows[id] : undefined;
       if (!row || (row.user_id === ctx?.userId && pendingToggles.has(`${row.habit_id}|${row.date}`))) return;
       delete completionRows[row.id];
+      // A pending proof of mine just vanished from under me: the only way
+      // that happens without my own action is my partner rejecting it (the
+      // "reject" policy only lets them delete a *pending* row — see the
+      // migration). The habit still existing rules out "I deleted the whole
+      // habit" as the cause.
+      if (ctx && row.user_id === ctx.userId && row.proof_status === 'pending' && habitRows[row.habit_id]) {
+        const habit = habitRows[row.habit_id];
+        const otherId = Object.keys(slots).find((u) => u !== ctx!.userId);
+        notifyProofRejected(habit.name, (otherId && names[otherId]) ?? 'Your partner', habit.icon);
+      }
     } else if (payload.eventType === 'INSERT') {
       const row = payload.new;
       if (!ctx || row.household_id !== ctx.householdId) return;
@@ -310,12 +336,25 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       for (const [cid, c] of Object.entries(completionRows)) {
         if (completionKey(c.habit_id, c.user_id, c.date) === completionKey(row.habit_id, row.user_id, row.date)) delete completionRows[cid];
       }
-      completionRows[row.id] = { id: row.id, habit_id: row.habit_id, user_id: row.user_id, date: row.date, proof_path: row.proof_path ?? null };
+      completionRows[row.id] = { id: row.id, habit_id: row.habit_id, user_id: row.user_id, date: row.date, proof_path: row.proof_path ?? null, proof_status: row.proof_status ?? null };
+      // Partner just submitted proof on something of theirs — or on a shared
+      // habit — that needs my sign-off.
+      if (row.proof_status === 'pending' && row.user_id !== ctx.userId) {
+        const habit = habitRows[row.habit_id];
+        notifyProofPending(habit?.name ?? 'a habit', names[row.user_id] ?? 'Your partner', habit?.icon);
+      }
     } else if (payload.eventType === 'UPDATE') {
       const row = payload.new;
       const local = completionRows[row.id];
       if (!local) return;
-      completionRows[row.id] = { ...local, proof_path: row.proof_path ?? null };
+      const wasPending = local.proof_status === 'pending';
+      completionRows[row.id] = { ...local, proof_path: row.proof_path ?? null, proof_status: row.proof_status ?? null };
+      // My own submitted proof just got approved.
+      if (ctx && wasPending && row.proof_status === 'approved' && row.user_id === ctx.userId) {
+        const habit = habitRows[row.habit_id];
+        const otherId = Object.keys(slots).find((u) => u !== ctx!.userId);
+        notifyProofApproved(habit?.name ?? 'a habit', (otherId && names[otherId]) ?? 'Your partner', habit?.icon);
+      }
     } else {
       return;
     }
@@ -385,6 +424,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
     habits: [],
     completions: {},
     proofs: {},
+    proofStatuses: {},
     nudges: {},
 
     start: async (householdId, userId, members) => {
@@ -444,7 +484,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       names = {};
       pendingToggles.clear();
       pendingHabitInserts.clear();
-      set({ status: 'idle', habits: [], completions: {}, proofs: {}, nudges: {} });
+      set({ status: 'idle', habits: [], completions: {}, proofs: {}, proofStatuses: {}, nudges: {} });
     },
 
     addHabit: (draft) => {
@@ -466,6 +506,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         created_at: new Date().toISOString(),
         reminder_time: reminder,
         pauses: [],
+        require_proof: Boolean(draft.requireProof),
       };
       habitRows[row.id] = row;
       publish();
@@ -491,11 +532,12 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const before = habitRows[id];
       if (!before) return;
       const gen = generation;
-      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'reminder_time'>> = {};
+      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'reminder_time' | 'require_proof'>> = {};
       if (patch.name != null) update.name = patch.name.trim().slice(0, MAX_HABIT_NAME);
       if (patch.icon != null) update.icon = patch.icon.slice(0, 16);
       if (patch.time != null && TIMES.includes(patch.time as TimeOfDay)) update.time_of_day = patch.time;
       if (patch.reminderTime !== undefined) update.reminder_time = patch.reminderTime && TIME_RE.test(patch.reminderTime) ? patch.reminderTime : null;
+      if (patch.requireProof !== undefined) update.require_proof = patch.requireProof;
       habitRows[id] = { ...before, ...update };
       publish();
 
@@ -577,16 +619,21 @@ export const useTasksStore = create<TasksState>()((set, get) => {
 
     toggleCompletion: (habitId, date, person) => {
       const current = get().completions[date]?.[habitId] ?? {};
-      if (!ctx || slots[ctx.userId] !== person || !habitRows[habitId]) return current;
+      const habitRow = habitRows[habitId];
+      if (!ctx || slots[ctx.userId] !== person || !habitRow) return current;
       const { userId } = ctx;
       const gen = generation;
 
       const existing = Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === userId && c.date === date);
+      // A "requires proof" habit can only be completed by submitting the
+      // photo (see submitProof) — a plain tap can still un-complete one,
+      // though, same as any other habit.
+      if (!existing && habitRow.require_proof) return current;
       if (existing) {
         delete completionRows[existing.id];
       } else {
         const id = Crypto.randomUUID();
-        completionRows[id] = { id, habit_id: habitId, user_id: userId, date, proof_path: null };
+        completionRows[id] = { id, habit_id: habitId, user_id: userId, date, proof_path: null, proof_status: null };
       }
       publish();
 
@@ -659,6 +706,69 @@ export const useTasksStore = create<TasksState>()((set, get) => {
           fail('tasks.setProof', error ?? { code: '42501' });
         }
       })();
+    },
+
+    submitProof: async (habitId, date, path) => {
+      if (!ctx) return false;
+      const { userId, householdId } = ctx;
+      if (!habitRows[habitId]) return false;
+      const gen = generation;
+      const existing = Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === userId && c.date === date);
+      const id = existing?.id ?? Crypto.randomUUID();
+      const before = existing ? { ...existing } : null;
+      completionRows[id] = { id, habit_id: habitId, user_id: userId, date, proof_path: path, proof_status: 'pending' };
+      publish();
+
+      await pendingHabitInserts.get(habitId);
+      const { error } = existing
+        ? await supabase.from('completions').update({ proof_path: path, proof_status: 'pending' }).eq('id', id)
+        : await supabase.from('completions').insert({ id, household_id: householdId, habit_id: habitId, user_id: userId, date, proof_path: path, proof_status: 'pending' });
+      if (gen !== generation) return false;
+      if (error && error.code !== '23505') {
+        if (before) completionRows[id] = before;
+        else delete completionRows[id];
+        publish();
+        fail('tasks.submitProof', error);
+        return false;
+      }
+      return true;
+    },
+
+    validateProof: async (habitId, date, person, decision) => {
+      if (!ctx) return false;
+      const targetUserId = Object.entries(slots).find(([, p]) => p === person)?.[0];
+      if (!targetUserId || targetUserId === ctx.userId) return false; // only your partner's proof, never your own
+      const target = Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === targetUserId && c.date === date);
+      if (!target || target.proof_status !== 'pending') return false;
+      const gen = generation;
+      const before = { ...target };
+
+      if (decision === 'approve') {
+        completionRows[target.id] = { ...target, proof_status: 'approved' };
+        publish();
+        const { error } = await supabase.from('completions').update({ proof_status: 'approved' }).eq('id', target.id);
+        if (gen !== generation) return false;
+        if (error) {
+          completionRows[target.id] = before;
+          publish();
+          fail('tasks.validateProof', error);
+          return false;
+        }
+        return true;
+      }
+
+      // Reject: their completion goes away entirely so they can redo it.
+      delete completionRows[target.id];
+      publish();
+      const { error } = await supabase.from('completions').delete().eq('id', target.id);
+      if (gen !== generation) return false;
+      if (error) {
+        completionRows[target.id] = before;
+        publish();
+        fail('tasks.validateProof', error);
+        return false;
+      }
+      return true;
     },
 
     sendNudge: async (habitId, date) => {

@@ -43,3 +43,26 @@ export function notifyInvite(habitName: string, fromName: string) {
   });
   void presentLocal(title, body, { kind: 'invite' });
 }
+
+// ─── Proof of work ────────────────────────────────────────────────────────────
+
+export function notifyProofPending(habitName: string, fromName: string, icon?: string) {
+  const title = `${fromName} needs your OK ${icon ?? '📸'}`;
+  const body = `Check the photo for "${habitName}" and say if it counts.`;
+  toast.info(title, body, { icon: icon ?? '📸' });
+  void presentLocal(title, body, { kind: 'proof-pending' });
+}
+
+export function notifyProofApproved(habitName: string, fromName: string, icon?: string) {
+  const title = `${fromName} approved your photo ✅`;
+  const body = `"${habitName}" is officially done.`;
+  toast.success(title, body, { icon: icon ?? '✅' });
+  void presentLocal(title, body, { kind: 'proof-approved' });
+}
+
+export function notifyProofRejected(habitName: string, fromName: string, icon?: string) {
+  const title = `${fromName} asked for a redo`;
+  const body = `Your photo for "${habitName}" didn't quite land — give it another shot.`;
+  toast.info(title, body, { icon: icon ?? '🔁' });
+  void presentLocal(title, body, { kind: 'proof-rejected' });
+}

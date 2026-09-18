@@ -51,25 +51,43 @@ export function WeekView({
     return <EmptyState icon="🗓️" title="An empty week" body="Add a habit and this fills in as the days go by." actionLabel="Add a habit" onAction={onAddHabit} />;
   }
 
+  const dayHeader = (
+    <>
+      {weekDates.map((d) => (
+        <Pressable key={d} onPress={() => onSelectDate(d)} style={styles.dayCol} hitSlop={4}>
+          <Text style={[styles.dayLabel, d === t && { color: S.accentDeep }]}>{format(new Date(d + 'T00:00:00'), 'EEEEE', { locale })}</Text>
+          <View style={[styles.dayNumWrap, d === selectedDate && styles.dayNumSelected]}>
+            <Text
+              style={[
+                styles.dayNum,
+                { fontFamily: d === selectedDate ? fonts.bold : fonts.regular },
+                d === selectedDate && styles.dayNumTextSelected,
+                isFuture(d) && { color: S.muted },
+              ]}
+            >
+              {Number(d.slice(8))}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </>
+  );
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.headerRow}>
-        <View style={styles.nameCol} />
-        {weekDates.map((d) => (
-          <Pressable key={d} onPress={() => onSelectDate(d)} style={styles.dayCol} hitSlop={4}>
-            <Text style={[styles.dayLabel, d === t && { color: S.accentDeep }]}>{format(new Date(d + 'T00:00:00'), 'EEEEE', { locale })}</Text>
-            <View style={[styles.dayNumWrap, d === selectedDate && styles.dayNumSelected]}>
-              <Text style={[styles.dayNum, { fontFamily: d === selectedDate ? fonts.bold : fonts.regular }, isFuture(d) && { color: S.muted }]}>
-                {Number(d.slice(8))}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
-
-      {sections.map((section) => (
+      {sections.map((section, idx) => (
         <View key={section.key} style={styles.section}>
-          <Text style={styles.sectionLabel}>{section.label}</Text>
+          {/* The day-of-week header rides along with the first section's
+              label instead of floating above everything on its own — it was
+              reading as a separate, disconnected block. */}
+          {idx === 0 ? (
+            <View style={styles.headerRow}>
+              <Text style={[styles.sectionLabel, styles.sectionLabelInline]} numberOfLines={1}>{section.label}</Text>
+              {dayHeader}
+            </View>
+          ) : (
+            <Text style={styles.sectionLabel}>{section.label}</Text>
+          )}
           <View style={styles.card}>
             {section.items.map((habit, idx) => (
               <View key={habit.id} style={[styles.row, idx > 0 && styles.rowBorder]}>
@@ -134,9 +152,9 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 6,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   nameCol: {
     width: NAME_COL,
@@ -164,14 +182,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayNumSelected: {
-    backgroundColor: S.ink900,
+    // The app's accent green, not black — readable against a white number
+    // and consistent with how "selected" reads everywhere else in the app.
+    backgroundColor: S.accent,
   },
   dayNum: {
     fontSize: 12,
     color: S.ink900,
   },
+  dayNumTextSelected: {
+    color: '#FFFFFF',
+  },
   section: {
-    marginTop: 12,
+    marginTop: 16,
   },
   sectionLabel: {
     fontSize: 12,
@@ -179,6 +202,12 @@ const styles = StyleSheet.create({
     color: S.ink700,
     marginBottom: 6,
     paddingHorizontal: 6,
+  },
+  sectionLabelInline: {
+    width: NAME_COL,
+    marginBottom: 0,
+    paddingHorizontal: 0,
+    paddingRight: 6,
   },
   card: {
     backgroundColor: S.card,

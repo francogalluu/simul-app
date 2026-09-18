@@ -68,6 +68,8 @@ export default function HomeScreen() {
   const weekStartsOn = useSettingsStore((s) => s.weekStartsOn);
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
+  const proofs = useTasksStore((s) => s.proofs);
+  const proofStatuses = useTasksStore((s) => s.proofStatuses);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
   const anniversary = useHouseholdStore((s) => s.household?.anniversary ?? null);
   const { partnerHere } = usePartnerPresence();
@@ -284,6 +286,8 @@ export default function HomeScreen() {
                 readOnly={readOnly}
                 habits={habits}
                 completions={completions}
+                proofs={proofs}
+                proofStatuses={proofStatuses}
                 celebratingId={celebratingId}
                 onToggle={handleToggle}
                 onLongPress={openSheet}

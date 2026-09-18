@@ -55,15 +55,19 @@ function SheetBody({ habit, date, me, onClose, onEdit }: { habit: Habit; date: s
   const userId = useHouseholdStore((s) => s.userId);
   const completions = useTasksStore((s) => s.completions);
   const proofs = useTasksStore((s) => s.proofs);
+  const proofStatuses = useTasksStore((s) => s.proofStatuses);
   const nudges = useTasksStore((s) => s.nudges);
   const removeHabit = useTasksStore((s) => s.removeHabit);
   const pauseHabit = useTasksStore((s) => s.pauseHabit);
   const resumeHabit = useTasksStore((s) => s.resumeHabit);
   const skipDay = useTasksStore((s) => s.skipDay);
   const setProof = useTasksStore((s) => s.setProof);
+  const submitProof = useTasksStore((s) => s.submitProof);
+  const validateProof = useTasksStore((s) => s.validateProof);
   const sendNudge = useTasksStore((s) => s.sendNudge);
   const [uploading, setUploading] = useState(false);
   const [nudging, setNudging] = useState(false);
+  const [validating, setValidating] = useState(false);
 
   const isPendingInvite = habit.status === 'pending';
   const shared = habit.owner === 'both';
@@ -92,12 +96,21 @@ function SheetBody({ habit, date, me, onClose, onEdit }: { habit: Habit; date: s
   const canNudge = shared && isToday && !isPendingInvite && people[partner].joined && !theirsDone && !paused;
   const myProof = proofs[date]?.[habit.id]?.[me];
   const theirProof = proofs[date]?.[habit.id]?.[partner];
-  const canAddProof = mineDone && !isFuture(date) && (shared || habit.owner === me);
+  const myStatus = proofStatuses[date]?.[habit.id]?.[me];
+  const partnerStatus = proofStatuses[date]?.[habit.id]?.[partner];
+  const requireProof = habit.requireProof;
+  // A "requires proof" habit is completed BY submitting the photo — the tile
+  // becomes the "do this" button instead of an optional add-on afterward.
+  const canSubmitProof = requireProof && !mineDone && !isFuture(date) && !isPendingInvite && !paused && (shared || habit.owner === me);
+  const canAddOptionalProof = !requireProof && mineDone && !isFuture(date) && (shared || habit.owner === me);
+  const needsMyValidation = requireProof && partnerStatus === 'pending' && people[partner].joined;
+  const waitingOnPartner = requireProof && myStatus === 'pending';
 
   const subtitle = [
     habit.owner === 'both' ? `Together with ${partnerName}` : habit.owner === me ? 'Just you' : `${people[habit.owner].name}'s habit`,
     habit.time,
     habit.reminderTime ? `⏰ ${formatClock(habit.reminderTime)}` : null,
+    requireProof ? '📸 Proof required' : null,
   ].filter(Boolean).join(' • ');
 
   const confirmDelete = () => {
@@ -141,6 +154,55 @@ function SheetBody({ habit, date, me, onClose, onEdit }: { habit: Habit; date: s
       ...(myProof ? [{ text: 'Remove photo', style: 'destructive' as const, onPress: () => setProof(habit.id, date, null) }] : []),
       { text: 'Cancel', style: 'cancel' as const },
     ]);
+  };
+
+  const handleSubmitProof = async (result: ProofPickResult) => {
+    if ('cancelled' in result) return;
+    if ('error' in result) {
+      toast.error(result.error === 'permission' ? 'Camera access needed' : "Couldn't submit that photo", result.detail);
+      return;
+    }
+    const ok = await submitProof(habit.id, date, result.path);
+    if (ok) {
+      haptic.success();
+      toast.success('Proof submitted 📸', `Waiting for ${partnerName} to check it.`);
+    } else {
+      toast.error("Couldn't submit that photo", 'Try again in a moment.');
+    }
+  };
+
+  const submitProofFlow = () => {
+    if (!userId) return;
+    Alert.alert(
+      'Submit proof',
+      `${partnerName} will need to approve this before it counts.`,
+      [
+        { text: 'Take photo', onPress: async () => { setUploading(true); await handleSubmitProof(await pickProofFromCamera(userId, habit.id, date)); setUploading(false); } },
+        { text: 'Choose from library', onPress: async () => { setUploading(true); await handleSubmitProof(await pickProofFromLibrary(userId, habit.id, date)); setUploading(false); } },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
+  const myTilePress = () => {
+    if (myProof && !requireProof) { addProof(); return; }
+    if (!myProof && canSubmitProof) { submitProofFlow(); return; }
+    if (!myProof && canAddOptionalProof) { addProof(); return; }
+    // Already submitted and pending/approved — locked until your partner decides.
+  };
+
+  const decide = async (decision: 'approve' | 'reject') => {
+    if (validating) return;
+    setValidating(true);
+    haptic.medium();
+    const ok = await validateProof(habit.id, date, partner, decision);
+    setValidating(false);
+    if (!ok) {
+      toast.error("Couldn't send that", 'Try again in a moment.');
+      return;
+    }
+    if (decision === 'approve') toast.success('Approved ✅', `"${habit.name}" now counts for ${partnerName}.`);
+    else toast.info('Sent back for a redo', `${partnerName} can try again.`);
   };
 
   return (
@@ -195,27 +257,56 @@ function SheetBody({ habit, date, me, onClose, onEdit }: { habit: Habit; date: s
       )}
 
       {/* Proof photo */}
-      {(canAddProof || myProof || theirProof) && !isPendingInvite && (
-        <View style={styles.proofRow}>
-          {[{ person: me, url: myProof }, { person: partner, url: theirProof }]
-            .filter((p) => p.url || (p.person === me && canAddProof))
-            .map((p) => (
-              <Pressable
-                key={p.person}
-                onPress={p.person === me && canAddProof ? addProof : undefined}
-                style={({ pressed }) => [styles.proofTile, pressed && p.person === me && { opacity: 0.85 }]}
-              >
-                {p.url ? (
-                  <Image source={{ uri: p.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                ) : (
-                  <View style={styles.proofEmpty}>
-                    <Camera size={20} color={S.ink600} strokeWidth={2} />
-                    <Text style={styles.proofEmptyText}>{uploading ? 'Uploading…' : 'Add photo'}</Text>
-                  </View>
-                )}
-                <Avatar person={p.person} size={18} style={styles.proofAvatar} />
-              </Pressable>
-            ))}
+      {(canSubmitProof || canAddOptionalProof || myProof || theirProof) && !isPendingInvite && (
+        <>
+          <View style={styles.proofRow}>
+            {[
+              { person: me, url: myProof, status: myStatus, canAct: myProof ? !requireProof : canSubmitProof || canAddOptionalProof },
+              { person: partner, url: theirProof, status: partnerStatus, canAct: false },
+            ]
+              .filter((p) => p.url || (p.person === me && (canSubmitProof || canAddOptionalProof)))
+              .map((p) => (
+                <Pressable
+                  key={p.person}
+                  onPress={p.person === me ? myTilePress : undefined}
+                  disabled={p.person !== me}
+                  style={({ pressed }) => [styles.proofTile, pressed && p.canAct && { opacity: 0.85 }]}
+                >
+                  {p.url ? (
+                    <Image source={{ uri: p.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.proofEmpty}>
+                      <Camera size={20} color={S.ink600} strokeWidth={2} />
+                      <Text style={styles.proofEmptyText}>{uploading ? 'Uploading…' : requireProof ? 'Submit proof' : 'Add photo'}</Text>
+                    </View>
+                  )}
+                  <Avatar person={p.person} size={18} style={styles.proofAvatar} />
+                  {p.status && (
+                    <View style={[styles.proofStatusBadge, p.status === 'approved' && styles.proofStatusBadgeApproved]}>
+                      <Text style={styles.proofStatusBadgeText}>{p.status === 'approved' ? 'Approved ✓' : 'Pending'}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+          </View>
+          {waitingOnPartner && <Text style={styles.proofCaption}>Waiting for {partnerName} to check it 👀</Text>}
+          {requireProof && myStatus === 'approved' && <Text style={styles.proofCaption}>{partnerName} approved this ✅</Text>}
+        </>
+      )}
+
+      {/* Validate the partner's proof */}
+      {needsMyValidation && (
+        <View style={styles.validateBlock}>
+          <Text style={styles.validateTitle}>{partnerName} submitted proof</Text>
+          <Text style={styles.validateHint}>Does it count for "{habit.name}"?</Text>
+          <View style={styles.validateButtons}>
+            <Pressable onPress={() => decide('reject')} disabled={validating} style={({ pressed }) => [styles.validateBtn, styles.validateBtnGhost, pressed && { opacity: 0.8 }]}>
+              <Text style={styles.validateBtnGhostText}>Ask for a redo</Text>
+            </Pressable>
+            <Pressable onPress={() => decide('approve')} disabled={validating} style={({ pressed }) => [styles.validateBtn, styles.validateBtnPrimary, pressed && { opacity: 0.9 }]}>
+              <Text style={styles.validateBtnPrimaryText}>Approve</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -426,7 +517,10 @@ const styles = StyleSheet.create({
   },
   proofTile: {
     flex: 1,
-    height: 96,
+    // Portrait, not a short strip — a fixed height cropped hard whether the
+    // tile was showing alone (full width) or side-by-side with a partner's
+    // (half width); aspect ratio keeps it tall regardless.
+    aspectRatio: 3 / 4,
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.6)',
@@ -453,6 +547,74 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
+  },
+  proofStatusBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: S.amber,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  proofStatusBadgeApproved: {
+    backgroundColor: S.accentDeep,
+  },
+  proofStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  proofCaption: {
+    marginTop: 8,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: S.ink500,
+    textAlign: 'center',
+  },
+  validateBlock: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: S.goldSoft,
+  },
+  validateTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: S.ink900,
+  },
+  validateHint: {
+    fontSize: 12.5,
+    color: S.ink600,
+    marginTop: 2,
+  },
+  validateButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  validateBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  validateBtnGhost: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  validateBtnGhostText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: S.ink700,
+  },
+  validateBtnPrimary: {
+    backgroundColor: S.accent,
+  },
+  validateBtnPrimaryText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   actions: {
     marginTop: 16,

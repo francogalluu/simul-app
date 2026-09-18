@@ -143,6 +143,7 @@ export default function AddHabitScreen() {
   // the moment the reminder is switched on, so the bucket finally has teeth.
   const [reminder, setReminder] = useState<string | null>(editing?.reminderTime ?? null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [requireProof, setRequireProof] = useState(editing?.requireProof ?? false);
   const notificationsPermission = useSettingsStore((st) => st.notificationsPermission);
   const setNotificationsPermission = useSettingsStore((st) => st.setNotificationsPermission);
 
@@ -200,14 +201,14 @@ export default function AddHabitScreen() {
     if (!trimmed) return;
 
     if (isEdit && editing) {
-      updateHabit(editing.id, { name: trimmed, icon, time, reminderTime: reminder });
+      updateHabit(editing.id, { name: trimmed, icon, time, reminderTime: reminder, requireProof });
       haptic.success();
       close();
       return;
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both', reminderTime: reminder });
+      addHabit({ name: trimmed, time, icon, owner: 'both', reminderTime: reminder, requireProof });
       haptic.success();
       Alert.alert(
         'Invite sent 💌',
@@ -219,7 +220,7 @@ export default function AddHabitScreen() {
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: 'me', reminderTime: reminder });
+    addHabit({ name: trimmed, time, icon, owner: 'me', reminderTime: reminder, requireProof });
     haptic.success();
     close();
   };
@@ -367,6 +368,27 @@ export default function AddHabitScreen() {
                 )}
               </>
             )}
+          </View>
+
+          {/* Proof of work */}
+          <Text style={s.sectionLabel}>Proof of work</Text>
+          <View style={s.card}>
+            <View style={s.reminderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.fieldLabel}>Require a photo</Text>
+                <Text style={s.reminderHint}>
+                  {mode === 'shared'
+                    ? `You each submit a photo, and the other approves it.`
+                    : `${partnerName} has to approve your photo for it to count.`}
+                </Text>
+              </View>
+              <Switch
+                value={requireProof}
+                onValueChange={(v) => { haptic.tap(); setRequireProof(v); }}
+                trackColor={{ false: S.line, true: S.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
           </View>
 
           {mode === 'shared' && !isEdit && (
