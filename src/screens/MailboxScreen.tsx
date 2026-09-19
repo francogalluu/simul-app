@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -11,7 +10,6 @@ import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { EmptyState } from '@/components/EmptyState';
 
 export default function MailboxScreen() {
@@ -30,81 +28,85 @@ export default function MailboxScreen() {
   const decline = (h: Habit) => { haptic.warning(); declineInvite(h.id); };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Mailbox" />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {incoming.length === 0 && sent.length === 0 ? (
-          <EmptyState
-            icon="📭"
-            title="Nothing in your mailbox"
-            body={`When ${partnerName} invites you to a shared habit, it'll show up here for you to accept.`}
-            actionLabel={`Invite ${partnerName} to a habit`}
-            onAction={() => navigation.navigate('AddHabit')}
-          />
-        ) : (
-          <>
-            {incoming.length > 0 && (
-              <>
-                <Text style={styles.sectionLabel}>Requests for you</Text>
-                {incoming.map((h) => (
-                  <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
-                    <View style={styles.card}>
-                      <View style={styles.fromRow}>
-                        <Avatar person={partner} size={24} style={styles.fromAvatar} />
-                        <Text style={styles.fromText}>
-                          <Text style={styles.fromName}>{partnerName}</Text> wants to do this together
-                        </Text>
+    // The title is the native large-title header (see RootNavigator); the ScrollView is the screen's
+    // direct child so that header can collapse as it scrolls and handle the top inset.
+    <ScrollView
+      style={styles.safe}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+    >
+      {incoming.length === 0 && sent.length === 0 ? (
+        <EmptyState
+          icon="📭"
+          title="Nothing in your mailbox"
+          body={`When ${partnerName} invites you to a shared habit, it'll show up here for you to accept.`}
+          actionLabel={`Invite ${partnerName} to a habit`}
+          onAction={() => navigation.navigate('AddHabit')}
+        />
+      ) : (
+        <>
+          {incoming.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>Requests for you</Text>
+              {incoming.map((h) => (
+                <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
+                  <View style={styles.card}>
+                    <View style={styles.fromRow}>
+                      <Avatar person={partner} size={24} style={styles.fromAvatar} />
+                      <Text style={styles.fromText}>
+                        <Text style={styles.fromName}>{partnerName}</Text> wants to do this together
+                      </Text>
+                    </View>
+                    <View style={styles.habitRow}>
+                      <View style={styles.habitIcon}>
+                        <Text style={styles.habitIconText}>{h.icon}</Text>
                       </View>
-                      <View style={styles.habitRow}>
-                        <View style={styles.habitIcon}>
-                          <Text style={styles.habitIconText}>{h.icon}</Text>
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
-                          <Text style={styles.habitMeta}>{h.time} • every day, both of you</Text>
-                        </View>
-                      </View>
-                      <View style={styles.actions}>
-                        <Pressable onPress={() => decline(h)} style={({ pressed }) => [styles.ghostButton, pressed && { opacity: 0.7 }]}>
-                          <Text style={styles.ghostButtonText}>Decline</Text>
-                        </Pressable>
-                        <Pressable onPress={() => accept(h)} style={({ pressed }) => [styles.acceptButton, pressed && { opacity: 0.9 }]}>
-                          <Text style={styles.acceptButtonText}>Accept</Text>
-                        </Pressable>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
+                        <Text style={styles.habitMeta}>{h.time} • every day, both of you</Text>
                       </View>
                     </View>
-                  </Animated.View>
-                ))}
-              </>
-            )}
+                    <View style={styles.actions}>
+                      <Pressable onPress={() => decline(h)} style={({ pressed }) => [styles.ghostButton, pressed && { opacity: 0.7 }]}>
+                        <Text style={styles.ghostButtonText}>Decline</Text>
+                      </Pressable>
+                      <Pressable onPress={() => accept(h)} style={({ pressed }) => [styles.acceptButton, pressed && { opacity: 0.9 }]}>
+                        <Text style={styles.acceptButtonText}>Accept</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </Animated.View>
+              ))}
+            </>
+          )}
 
-            {sent.length > 0 && (
-              <>
-                <Text style={styles.sectionLabel}>Waiting on {partnerName}</Text>
-                {sent.map((h) => (
-                  <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
-                    <View style={[styles.card, styles.cardSent]}>
-                      <View style={styles.habitRow}>
-                        <View style={styles.habitIcon}>
-                          <Text style={styles.habitIconText}>{h.icon}</Text>
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
-                          <Text style={[styles.habitMeta, { color: S.amber }]}>Sent • waiting for {partnerName} to accept</Text>
-                        </View>
-                        <Pressable onPress={() => decline(h)} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.6 }}>
-                          <Text style={styles.cancelText}>Cancel</Text>
-                        </Pressable>
+          {sent.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>Waiting on {partnerName}</Text>
+              {sent.map((h) => (
+                <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
+                  <View style={[styles.card, styles.cardSent]}>
+                    <View style={styles.habitRow}>
+                      <View style={styles.habitIcon}>
+                        <Text style={styles.habitIconText}>{h.icon}</Text>
                       </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
+                        <Text style={[styles.habitMeta, { color: S.amber }]}>Sent • waiting for {partnerName} to accept</Text>
+                      </View>
+                      <Pressable onPress={() => decline(h)} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.6 }}>
+                        <Text style={styles.cancelText}>Cancel</Text>
+                      </Pressable>
                     </View>
-                  </Animated.View>
-                ))}
-              </>
-            )}
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+                  </View>
+                </Animated.View>
+              ))}
+            </>
+          )}
+        </>
+      )}
+    </ScrollView>
   );
 }
 

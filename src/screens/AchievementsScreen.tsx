@@ -1,14 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { View, Pressable, ScrollView, StyleSheet, Modal } from 'react-native';
 import { Text } from '@/components/AppText';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
 import { useMe } from '@/lib/people';
 import { computeAchievements, type Achievement } from '@/lib/achievements';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { ScreenHeader } from '@/components/ScreenHeader';
 
 export default function AchievementsScreen() {
   const me = useMe();
@@ -22,9 +20,15 @@ export default function AchievementsScreen() {
   const pct = achievements.length ? unlockedCount / achievements.length : 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Achievements" />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    // The title is the native large-title header (see RootNavigator); the ScrollView is the screen's
+    // first child so that header can collapse as it scrolls and handle the top inset.
+    <>
+      <ScrollView
+        style={styles.safe}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.hero}>
           <View style={styles.heroTop}>
             <Text style={styles.heroTitle}>{unlockedCount === 0 ? 'No badges yet' : `${unlockedCount} of ${achievements.length}`}</Text>
@@ -77,7 +81,7 @@ export default function AchievementsScreen() {
           )}
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }
 

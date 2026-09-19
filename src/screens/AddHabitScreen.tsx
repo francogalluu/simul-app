@@ -4,7 +4,6 @@ import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
-import Svg, { Path } from 'react-native-svg';
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -18,6 +17,7 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
+import { NativeSegmented } from '@/components/NativeControls';
 
 type Mode = 'single' | 'shared';
 
@@ -88,26 +88,6 @@ function PresetCard({
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
-function PersonIcon({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <Path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-    </Svg>
-  );
-}
-
-function PeopleIcon({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <Path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-      <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </Svg>
-  );
-}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -244,16 +224,14 @@ export default function AddHabitScreen() {
           {!isEdit && (
             <>
               <Text style={s.sectionLabel}>Who is this for</Text>
-              <View style={s.modeRow}>
-                <Pressable onPress={() => { haptic.tap(); setMode('single'); }} style={[s.modeOption, mode === 'single' && s.modeOptionActive]}>
-                  <PersonIcon color={mode === 'single' ? '#FFFFFF' : S.ink900} />
-                  <Text style={[s.modeLabel, mode === 'single' && s.modeLabelActive]}>Just me</Text>
-                </Pressable>
-                <Pressable onPress={() => { haptic.tap(); setMode('shared'); }} style={[s.modeOption, mode === 'shared' && s.modeOptionActive]}>
-                  <PeopleIcon color={mode === 'shared' ? '#FFFFFF' : S.ink900} />
-                  <Text style={[s.modeLabel, mode === 'shared' && s.modeLabelActive]}>With {partnerName}</Text>
-                </Pressable>
-              </View>
+              <NativeSegmented
+                value={mode}
+                onChange={(next: Mode) => { haptic.tap(); setMode(next); }}
+                options={[
+                  { value: 'single', label: 'Just me' },
+                  { value: 'shared', label: `With ${partnerName}` },
+                ]}
+              />
             </>
           )}
 
@@ -316,21 +294,12 @@ export default function AddHabitScreen() {
             </ScrollView>
 
             <Text style={[s.fieldLabel, { marginTop: 18 }]}>When</Text>
-            <View style={s.timeRow}>
-              {TIMES.map((t) => {
-                const selected = timeChoice === t;
-                return (
-                  <Pressable
-                    key={t}
-                    onPress={() => { haptic.tap(); setTimeChoice(t); }}
-                    style={[s.timeOption, selected && s.timeOptionSelected]}
-                  >
-                    <Text style={[s.timeOptionText, selected && s.timeOptionTextSelected]} numberOfLines={1} adjustsFontSizeToFit>
-                      {t}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={{ marginTop: 10 }}>
+              <NativeSegmented
+                value={timeChoice}
+                onChange={(next: string) => { haptic.tap(); setTimeChoice(next); }}
+                options={TIMES.map((t) => ({ value: t, label: t }))}
+              />
             </View>
           </View>
 
@@ -365,30 +334,6 @@ const s = StyleSheet.create({
     color: S.tertiary,
     marginTop: 20,
     marginBottom: 10,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modeOption: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: S.card,
-    borderRadius: 16,
-    paddingVertical: 16,
-    ...cardShadow,
-  },
-  modeOptionActive: {
-    backgroundColor: S.accent,
-  },
-  modeLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: S.ink900,
-  },
-  modeLabelActive: {
-    color: '#FFFFFF',
   },
   carouselBleed: {
     marginHorizontal: -SCREEN_PADDING,
@@ -485,30 +430,6 @@ const s = StyleSheet.create({
   },
   iconChipText: {
     fontSize: 20,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    gap: 4,
-    backgroundColor: S.bg,
-    borderRadius: 12,
-    padding: 4,
-  },
-  timeOption: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 9,
-    borderRadius: 9,
-  },
-  timeOptionSelected: {
-    backgroundColor: S.ink900,
-  },
-  timeOptionText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: S.ink700,
-  },
-  timeOptionTextSelected: {
-    color: '#FFFFFF',
   },
   note: {
     marginTop: 14,

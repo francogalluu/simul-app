@@ -23,6 +23,21 @@ import { S, fonts } from '@/lib/simulTheme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Native iOS header for pushed screens: glass back button and a large title that collapses on scroll.
+const nativeLargeTitle = (title: string) => ({
+  headerShown: true,
+  title,
+  headerBackButtonDisplayMode: 'minimal' as const,
+  headerTintColor: S.ink900,
+  headerShadowVisible: false,
+  headerStyle: { backgroundColor: S.bg },
+  headerLargeStyle: { backgroundColor: S.bg },
+  headerLargeTitleEnabled: true,
+  headerLargeTitleShadowVisible: false,
+  headerLargeTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+  headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+});
+
 function Splash() {
   return (
     <View style={styles.center}>
@@ -112,8 +127,8 @@ export default function RootNavigator() {
             })}
           />
           <Stack.Screen name="AddGoal" component={AddGoalScreen} options={{ presentation: 'modal' }} />
-          <Stack.Screen name="Mailbox" component={MailboxScreen} />
-          <Stack.Screen name="Achievements" component={AchievementsScreen} />
+          <Stack.Screen name="Mailbox" component={MailboxScreen} options={nativeLargeTitle('Mailbox')} />
+          <Stack.Screen name="Achievements" component={AchievementsScreen} options={nativeLargeTitle('Achievements')} />
         </>
       )}
     </Stack.Navigator>

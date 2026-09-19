@@ -3,8 +3,6 @@ import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, Share, Activ
 import { Text } from '@/components/AppText';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { Host, Picker, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
-import { labelsHidden, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
@@ -16,6 +14,7 @@ import { S, fonts, cardShadow, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/s
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
+import { NativeMenuPicker, NativeToggle } from '@/components/NativeControls';
 
 const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : '—');
 
@@ -236,44 +235,6 @@ export default function SettingsScreen() {
   );
 }
 
-// ─── Native SwiftUI controls (via @expo/ui) ───────────────────────────────────
-
-function NativeToggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <Host matchContents={{ horizontal: true }} style={styles.nativeControl} seedColor={S.accent}>
-      <Toggle isOn={value} onIsOnChange={onChange} />
-    </Host>
-  );
-}
-
-function NativeMenuPicker<T extends string | number>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (next: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  // The native picker also reports its initial value when it mounts, which can overwrite a
-  // saved setting that hasn't finished loading yet, so only react to real changes.
-  return (
-    <Host matchContents={{ horizontal: true }} style={styles.nativeControl} seedColor={S.accentDeep}>
-      <Picker
-        selection={value}
-        onSelectionChange={(next: T) => next !== value && onChange(next)}
-        modifiers={[pickerStyle('menu'), labelsHidden()]}
-      >
-        {options.map((o) => (
-          <SwiftText key={String(o.value)} modifiers={[tag(o.value)]}>
-            {o.label}
-          </SwiftText>
-        ))}
-      </Picker>
-    </Host>
-  );
-}
-
 function Row({
   label,
   value,
@@ -355,10 +316,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: S.ink900,
     flexShrink: 1,
-  },
-  // Fixed height so the SwiftUI control is centered in the row like the RN labels are.
-  nativeControl: {
-    height: 34,
   },
   rowRight: {
     flexDirection: 'row',
