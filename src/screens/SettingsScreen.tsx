@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
+import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/AppText';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,7 @@ import { S, fonts, cardShadow, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/s
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
-import { NativeMenuPicker, NativeToggle } from '@/components/NativeControls';
+import { NativeMenuPicker, NativeSecondaryButton, NativeShareButton, NativeToggle } from '@/components/NativeControls';
 
 const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : '—');
 
@@ -66,12 +66,6 @@ export default function SettingsScreen() {
   const changeColor = async (color: string) => {
     const res = await updateProfile({ color });
     if (res.error) Alert.alert(t('errors.syncTitle'), errorMessage(res.error));
-  };
-
-  const shareCode = () => {
-    if (!household?.inviteCode) return;
-    haptic.tap();
-    void Share.share({ message: t('settings.shareMessage', { code: formatCode(household.inviteCode) }) });
   };
 
   // Destructive actions show errors inline via Alert and keep the button busy while running.
@@ -167,12 +161,12 @@ export default function SettingsScreen() {
               <Text selectable style={styles.code}>{formatCode(household?.inviteCode)}</Text>
               <Text style={styles.hint}>{t('settings.codeHint')}</Text>
               <View style={styles.inviteActions}>
-                <Pressable onPress={shareCode} style={({ pressed }) => [styles.pillButton, styles.pillPrimary, pressed && { opacity: 0.8 }]}>
-                  <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{t('settings.shareCode')}</Text>
-                </Pressable>
-                <Pressable onPress={confirmNewCode} disabled={busy != null} style={({ pressed }) => [styles.pillButton, pressed && { opacity: 0.8 }]}>
-                  {busy === 'code' ? <ActivityIndicator color={S.accentDeep} /> : <Text style={styles.pillText}>{t('settings.newCode')}</Text>}
-                </Pressable>
+                <NativeShareButton
+                  label={t('settings.shareCode')}
+                  subject="Simul"
+                  message={t('settings.shareMessage', { code: formatCode(household?.inviteCode) })}
+                />
+                <NativeSecondaryButton label={t('settings.newCode')} onPress={busy != null ? () => {} : confirmNewCode} />
               </View>
             </View>
           </>
@@ -366,21 +360,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 6,
-  },
-  pillButton: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: S.bg,
-  },
-  pillPrimary: {
-    backgroundColor: S.accent,
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: S.accentDeep,
   },
 });

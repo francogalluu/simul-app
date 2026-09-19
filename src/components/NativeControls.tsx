@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Host, Picker, ProgressView, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
-import { labelsHidden, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
+import { Button, ColorPicker, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
+import { buttonStyle, controlSize, font, frame, labelsHidden, lineLimit, pickerStyle, tag, tint } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
 
 // Real SwiftUI controls (via @expo/ui), tinted with the app's greens.
@@ -81,7 +81,54 @@ export function NativeProgress({ value, color = S.accent }: { value: number; col
   );
 }
 
+/** Native iOS share sheet trigger, drawn as a prominent SwiftUI button. */
+export function NativeShareButton({ label, message, subject }: { label: string; message: string; subject?: string }) {
+  return (
+    <Host matchContents={{ vertical: true }} style={styles.fill}>
+      <ShareLink
+        item={message}
+        subject={subject}
+        message={message}
+        modifiers={[buttonStyle('borderedProminent'), controlSize('regular'), tint(S.accent)]}
+      >
+        <SwiftText modifiers={[font({ size: 14, weight: 'semibold' }), frame({ maxWidth: 10000 }), lineLimit(1)]}>{label}</SwiftText>
+      </ShareLink>
+    </Host>
+  );
+}
+
+/** Native bordered SwiftUI button, to sit next to NativeShareButton. */
+export function NativeSecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Host matchContents={{ vertical: true }} style={styles.fill}>
+      <Button
+        onPress={onPress}
+        modifiers={[buttonStyle('bordered'), controlSize('regular'), tint(S.accentDeep)]}
+      >
+        <SwiftText modifiers={[font({ size: 14, weight: 'semibold' }), frame({ maxWidth: 10000 }), lineLimit(1)]}>{label}</SwiftText>
+      </Button>
+    </Host>
+  );
+}
+
+/** Native iOS color picker (opens the system color sheet). Reports `#RRGGBB`. */
+export function NativeColorPicker({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+  const handleChange = useChangeOnly(value.toLowerCase(), (hex: string) => onChange(hex.slice(0, 7)));
+  return (
+    <Host matchContents style={styles.colorPicker}>
+      <ColorPicker selection={value} supportsOpacity={false} onSelectionChange={(hex: string) => handleChange(hex.slice(0, 7).toLowerCase())} />
+    </Host>
+  );
+}
+
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
+  colorPicker: {
+    width: 44,
+    height: 44,
+  },
   progress: {
     alignSelf: 'stretch',
   },

@@ -3,6 +3,7 @@ import { ScrollView, Pressable, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AVATAR_COLORS } from '@/lib/avatarColors';
 import { haptic } from '@/lib/haptics';
+import { NativeColorPicker } from '@/components/NativeControls';
 
 function CheckIcon() {
   return (
@@ -12,7 +13,7 @@ function CheckIcon() {
   );
 }
 
-/** Row of swatches from the curated palette. */
+/** Row of swatches from the curated palette, plus the native iOS color picker for custom colors. */
 export function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -32,6 +33,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (col
           </Pressable>
         );
       })}
+      <NativeColorPicker value={value} onChange={(hex) => { haptic.tap(); onChange(hex); }} />
     </ScrollView>
   );
 }
@@ -39,6 +41,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (col
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     paddingVertical: 2,
     paddingHorizontal: 2,
