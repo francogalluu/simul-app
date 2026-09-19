@@ -83,7 +83,17 @@ export default function RootNavigator() {
       ) : (
         <>
           <Stack.Screen name="Tabs" component={TabNavigator} />
-          <Stack.Screen name="AddHabit" component={AddHabitScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="AddHabit"
+            component={AddHabitScreen}
+            options={{
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.78, 1],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+              sheetExpandsWhenScrolledToEdge: true,
+            }}
+          />
           <Stack.Screen name="AddGoal" component={AddGoalScreen} options={{ presentation: 'modal' }} />
           <Stack.Screen name="Mailbox" component={MailboxScreen} />
           <Stack.Screen name="Achievements" component={AchievementsScreen} />
