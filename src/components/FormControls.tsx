@@ -1,16 +1,53 @@
 import React, { forwardRef } from 'react';
-import { View, TextInput, Pressable, ActivityIndicator, StyleSheet, type TextInputProps } from 'react-native';
+import { View, TextInput, Pressable, ActivityIndicator, Platform, StyleSheet, type TextInputProps } from 'react-native';
 import { Text } from '@/components/AppText';
 import { S, softShadow } from '@/lib/simulTheme';
+import { NativeButton, NativeTextField, type NativeTextFieldHandle } from '@/components/NativeControls';
 
-export const TextField = forwardRef<TextInput, TextInputProps & { label: string }>(function TextField(
-  { label, style, ...props },
+type TextFieldProps = TextInputProps & {
+  label: string;
+  /** Big, bold, centered text with wide letter spacing (for codes). */
+  code?: boolean;
+};
+
+const IOS_CONTENT_TYPES = ['emailAddress', 'oneTimeCode', 'givenName', 'name'] as const;
+
+/** Labelled text input: a SwiftUI TextField on iOS, a plain TextInput elsewhere. */
+export const TextField = forwardRef<NativeTextFieldHandle, TextFieldProps>(function TextField(
+  { label, style, code, ...props },
   ref,
 ) {
+  if (Platform.OS === 'ios') {
+    const contentType = IOS_CONTENT_TYPES.find((t) => t === props.textContentType);
+    return (
+      <View style={styles.field}>
+        <Text style={styles.label}>{label}</Text>
+        <NativeTextField
+          ref={ref}
+          value={props.value ?? ''}
+          onChangeText={props.onChangeText ?? (() => {})}
+          placeholder={props.placeholder}
+          maxLength={props.maxLength}
+          keyboardType={props.keyboardType === 'email-address' ? 'email-address' : props.keyboardType === 'number-pad' ? 'number-pad' : 'default'}
+          autoCapitalize={props.autoCapitalize}
+          autoCorrect={props.autoCorrect}
+          textContentType={contentType}
+          returnKeyType={props.returnKeyType === 'done' || props.returnKeyType === 'go' || props.returnKeyType === 'next' || props.returnKeyType === 'send' || props.returnKeyType === 'search' ? props.returnKeyType : undefined}
+          onSubmitEditing={props.onSubmitEditing ? () => props.onSubmitEditing?.({} as never) : undefined}
+          code={code}
+        />
+      </View>
+    );
+  }
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput ref={ref} placeholderTextColor={S.muted} style={[styles.input, style]} {...props} />
+      <TextInput
+        ref={ref as unknown as React.Ref<TextInput>}
+        placeholderTextColor={S.muted}
+        style={[styles.input, code && styles.codeInput, style]}
+        {...props}
+      />
     </View>
   );
 });
@@ -28,6 +65,9 @@ export function PrimaryButton({
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'link';
 }) {
+  if (Platform.OS === 'ios') {
+    return <NativeButton label={label} onPress={onPress} loading={loading} disabled={disabled} variant={variant} />;
+  }
   const inactive = disabled || loading;
   return (
     <Pressable
@@ -84,6 +124,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: S.lineSoft,
     ...softShadow,
+  },
+  codeInput: {
+    fontSize: 24,
+    letterSpacing: 8,
+    textAlign: 'center',
+    fontWeight: '700',
   },
   primary: {
     backgroundColor: S.accent,

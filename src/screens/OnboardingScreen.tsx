@@ -121,7 +121,7 @@ export default function OnboardingScreen() {
                   autoCorrect={false}
                   autoComplete="off"
                   maxLength={9}
-                  style={styles.codeInput}
+                  code
                   onSubmitEditing={() => run('join')}
                 />
                 <PrimaryButton
@@ -191,11 +191,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: S.tertiary,
     textAlign: 'center',
-  },
-  codeInput: {
-    fontSize: 22,
-    letterSpacing: 4,
-    textAlign: 'center',
-    fontWeight: '700',
   },
 });

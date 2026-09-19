@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { Button, ColorPicker, ConfirmationDialog, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
-import { buttonStyle, controlSize, font, frame, gaugeStyle, labelsHidden, lineLimit, pickerStyle, scaleEffect, tag, tint } from '@expo/ui/swift-ui/modifiers';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Button, ColorPicker, ConfirmationDialog, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, TextField, Toggle, useNativeState, type TextFieldRef } from '@expo/ui/swift-ui';
+import { autocorrectionDisabled, buttonStyle, controlSize, disabled as disabledModifier, font, foregroundStyle, frame, gaugeStyle, kerning, keyboardType as keyboardTypeModifier, labelsHidden, lineLimit, multilineTextAlignment, onSubmit, pickerStyle, scaleEffect, submitLabel, tag, textContentType, textFieldStyle, textInputAutocapitalization, tint } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
 
 // Real SwiftUI controls (via @expo/ui), tinted with the app's greens.
@@ -134,6 +134,22 @@ export function NativeColorPicker({ value, onChange }: { value: string; onChange
 }
 
 const styles = StyleSheet.create({
+  inputBox: {
+    backgroundColor: S.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: S.lineSoft,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  inputHost: {
+    alignSelf: 'stretch',
+  },
+  buttonHost: {
+    alignSelf: 'stretch',
+  },
   // The dialog is presented by the system; its host view is just an invisible anchor.
   hiddenHost: {
     position: 'absolute',
@@ -221,3 +237,116 @@ export function useNativeConfirm(anchorStyle?: StyleProp<ViewStyle>) {
 
 /** Anchor style: covers the whole parent view (which must be positioned) instead of a 1pt corner. */
 export const CONFIRM_ANCHOR_FILL: ViewStyle = { top: 0, left: 0, right: 0, bottom: 0, width: undefined, height: undefined };
+
+// ─── Native text field ────────────────────────────────────────────────────────
+
+export type NativeTextFieldHandle = { focus: () => void };
+
+type NativeTextFieldProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  maxLength?: number;
+  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'numeric';
+  autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
+  autoCorrect?: boolean;
+  textContentType?: 'emailAddress' | 'oneTimeCode' | 'givenName' | 'name';
+  returnKeyType?: 'done' | 'go' | 'next' | 'send' | 'search';
+  onSubmitEditing?: () => void;
+  /** Big, bold, centered text with wide letter spacing (for codes). */
+  code?: boolean;
+};
+
+/**
+ * SwiftUI text field inside the app's white rounded input box. It's controlled: when `value` is
+ * changed from JS (e.g. a formatter rewriting what was typed) the native text follows.
+ */
+export const NativeTextField = forwardRef<NativeTextFieldHandle, NativeTextFieldProps>(function NativeTextField(
+  { value, onChangeText, placeholder, maxLength, keyboardType, autoCapitalize = 'sentences', autoCorrect = true, textContentType: contentType, returnKeyType, onSubmitEditing, code },
+  ref,
+) {
+  const text = useNativeState(value);
+  const fieldRef = useRef<TextFieldRef>(null);
+  const lastNative = useRef(value);
+
+  useImperativeHandle(ref, () => ({ focus: () => void fieldRef.current?.focus() }), []);
+
+  // JS changed the value (not the user typing): push it into the native field.
+  useEffect(() => {
+    if (value !== lastNative.current) {
+      lastNative.current = value;
+      void fieldRef.current?.setText(value);
+    }
+  }, [value]);
+
+  const modifiers = [
+    textFieldStyle('plain'),
+    font(code ? { size: 24, weight: 'bold' } : { size: 16 }),
+    foregroundStyle(S.ink900),
+    textInputAutocapitalization(autoCapitalize === 'none' ? 'never' : autoCapitalize),
+    autocorrectionDisabled(!autoCorrect),
+    ...(code ? [multilineTextAlignment('center'), kerning(6)] : []),
+    ...(keyboardType ? [keyboardTypeModifier(keyboardType === 'number-pad' ? 'ascii-capable-number-pad' : keyboardType === 'numeric' ? 'numeric' : keyboardType)] : []),
+    ...(contentType ? [textContentType(contentType)] : []),
+    ...(returnKeyType ? [submitLabel(returnKeyType)] : []),
+    ...(onSubmitEditing ? [onSubmit(onSubmitEditing)] : []),
+  ];
+
+  return (
+    <View style={styles.inputBox}>
+      <Host matchContents={{ vertical: true }} style={styles.inputHost}>
+        <TextField
+          ref={fieldRef}
+          text={text}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          onTextChange={(next: string) => {
+            lastNative.current = next;
+            onChangeText(next);
+          }}
+          modifiers={modifiers}
+        />
+      </Host>
+    </View>
+  );
+});
+
+// ─── Native primary button ────────────────────────────────────────────────────
+
+/** Full-width SwiftUI button: prominent (primary), bordered (secondary) or plain text (link). */
+export function NativeButton({
+  label,
+  onPress,
+  loading,
+  disabled,
+  variant = 'primary',
+}: {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'link';
+}) {
+  const inactive = Boolean(disabled || loading);
+  const style = variant === 'primary' ? 'borderedProminent' : variant === 'secondary' ? 'bordered' : 'borderless';
+  return (
+    <Host matchContents={{ vertical: true }} style={styles.buttonHost}>
+      <Button
+        onPress={inactive ? undefined : onPress}
+        modifiers={[
+          buttonStyle(style),
+          controlSize(variant === 'link' ? 'regular' : 'large'),
+          tint(variant === 'primary' ? S.accent : S.accentDeep),
+          disabledModifier(inactive),
+          frame({ maxWidth: 10000 }),
+        ]}
+      >
+        {loading ? (
+          <ProgressView />
+        ) : (
+          <SwiftText modifiers={[font({ size: 16, weight: 'semibold' }), frame({ maxWidth: 10000 })]}>{label}</SwiftText>
+        )}
+      </Button>
+    </Host>
+  );
+}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, type TextInput } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
 import { TextField, PrimaryButton, ErrorText } from '@/components/FormControls';
+import type { NativeTextFieldHandle } from '@/components/NativeControls';
 
 const RESEND_SECONDS = 60;
 
@@ -27,7 +28,7 @@ export default function AuthScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
-  const codeRef = useRef<TextInput>(null);
+  const codeRef = useRef<NativeTextFieldHandle>(null);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -109,7 +110,7 @@ export default function AuthScreen() {
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
                 maxLength={10}
-                style={styles.codeInput}
+                code
                 onSubmitEditing={submitCode}
               />
               <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
@@ -172,11 +173,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: S.tertiary,
     textAlign: 'center',
-  },
-  codeInput: {
-    fontSize: 24,
-    letterSpacing: 8,
-    textAlign: 'center',
-    fontWeight: '700',
   },
 });
