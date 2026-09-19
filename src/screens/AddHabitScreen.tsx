@@ -302,12 +302,6 @@ export default function AddHabitScreen() {
               })}
             </ScrollView>
           </View>
-
-          {mode === 'shared' && !isEdit && (
-            <Text style={s.note}>
-              {partnerName} gets an invite in her mailbox. The habit shows as pending on your Home until she accepts — then you both need to complete it each day for it to count.
-            </Text>
-          )}
         </ScrollView>
 
       </KeyboardAvoidingView>
@@ -430,12 +424,5 @@ const s = StyleSheet.create({
   },
   iconChipText: {
     fontSize: 20,
-  },
-  note: {
-    marginTop: 14,
-    paddingHorizontal: 4,
-    fontSize: 13,
-    lineHeight: 19,
-    color: S.ink500,
   },
 });

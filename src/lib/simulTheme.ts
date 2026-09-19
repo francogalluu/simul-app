@@ -56,5 +56,6 @@ export const softShadow = {
 } as const;
 
 export const SCREEN_PADDING = 22;
-// The native tab bar floats over the screen, so scrollable content needs this much room at the bottom.
-export const TAB_BAR_CLEARANCE = 120;
+// Gap between the last item of a scrolling screen and the floating native tab bar. The bar's own
+// height is already added to the scroll insets automatically, so this is only the breathing room.
+export const TAB_BAR_CLEARANCE = 20;
