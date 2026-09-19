@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +18,6 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { useHeaderHeight } from '@react-navigation/elements';
 
 type Mode = 'single' | 'shared';
 
@@ -114,7 +113,6 @@ function PeopleIcon({ color }: { color: string }) {
 
 export default function AddHabitScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const headerHeight = useHeaderHeight();
   const route = useRoute<RouteProp<RootStackParamList, 'AddHabit'>>();
   const habitId = route.params?.habitId;
   const { width: screenWidth } = useWindowDimensions();
@@ -207,10 +205,41 @@ export default function AddHabitScreen() {
     if (!canManage) navigation.goBack();
   }, [canManage, navigation]);
 
+  // Native buttons in the header, top right: a tick to save (or add / invite), and a trash to
+  // delete when editing.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      unstable_headerRightItems: () => [
+        ...(isEdit
+          ? [
+              {
+                type: 'button' as const,
+                label: isPendingInvite ? 'Cancel invite' : 'Delete habit',
+                icon: { type: 'sfSymbol' as const, name: 'trash' as const },
+                tintColor: S.danger,
+                onPress: handleDelete,
+              },
+            ]
+          : []),
+        {
+          type: 'button' as const,
+          label: isEdit ? 'Save changes' : mode === 'shared' ? `Invite ${partnerName}` : 'Add habit',
+          icon: { type: 'sfSymbol' as const, name: 'checkmark' as const },
+          variant: 'prominent' as const,
+          tintColor: S.accent,
+          disabled: !canSubmit,
+          onPress: handleSubmit,
+        },
+      ],
+    });
+    // handleDelete/handleSubmit only depend on the values listed here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, editing?.id]);
+
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={[s.scroll, { paddingTop: headerHeight }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Who (new habits only: the owner of an existing habit can't change) */}
           {!isEdit && (
             <>
@@ -256,7 +285,7 @@ export default function AddHabitScreen() {
           )}
 
           {/* Details */}
-          <Text style={s.sectionLabel}>Details</Text>
+          {!isEdit && <Text style={s.sectionLabel}>Details</Text>}
           <View style={s.card}>
             <Text style={s.fieldLabel}>Name</Text>
             <View style={s.nameRow}>
@@ -310,23 +339,8 @@ export default function AddHabitScreen() {
               {partnerName} gets an invite in her mailbox. The habit shows as pending on your Home until she accepts — then you both need to complete it each day for it to count.
             </Text>
           )}
-
-          {isEdit && (
-            <Pressable onPress={handleDelete} style={({ pressed }) => [s.deleteLink, pressed && { opacity: 0.6 }]}>
-              <Text style={s.deleteLinkText}>{isPendingInvite ? 'Cancel invite' : 'Delete habit'}</Text>
-            </Pressable>
-          )}
         </ScrollView>
 
-        <View style={s.footer}>
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            style={({ pressed }) => [s.submit, !canSubmit && s.submitDisabled, pressed && canSubmit && { opacity: 0.9 }]}
-          >
-            <Text style={s.submitText}>{isEdit ? 'Save changes' : mode === 'shared' ? `Invite ${partnerName}` : 'Add habit'}</Text>
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -337,6 +351,7 @@ export default function AddHabitScreen() {
 const s = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: S.bg,
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
@@ -501,38 +516,5 @@ const s = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: S.ink500,
-  },
-  deleteLink: {
-    marginTop: 18,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: S.dangerSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteLinkText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: S.danger,
-  },
-  footer: {
-    paddingHorizontal: SCREEN_PADDING,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  submit: {
-    backgroundColor: S.accent,
-    borderRadius: 16,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitDisabled: {
-    opacity: 0.4,
-  },
-  submitText: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
   },
 });

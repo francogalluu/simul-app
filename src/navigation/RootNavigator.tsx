@@ -87,16 +87,17 @@ export default function RootNavigator() {
             name="AddHabit"
             component={AddHabitScreen}
             options={({ navigation, route }) => ({
-              // Native iOS sheet: the system draws the (Liquid Glass) sheet background, so the
-              // screen itself is transparent and the header is the native, translucent one.
+              // Native iOS sheet with a native header. One flat background colour throughout
+              // (no translucent header band). Editing is a short sheet, creating a taller one.
               presentation: 'formSheet',
-              sheetAllowedDetents: [0.78, 1],
+              sheetAllowedDetents: route.params?.habitId ? [0.46, 1] : [0.78, 1],
               sheetInitialDetentIndex: 0,
               sheetGrabberVisible: true,
               sheetExpandsWhenScrolledToEdge: true,
-              contentStyle: { backgroundColor: 'transparent' },
+              contentStyle: { backgroundColor: S.bg },
               headerShown: true,
-              headerTransparent: true,
+              headerTransparent: false,
+              headerStyle: { backgroundColor: S.bg },
               headerShadowVisible: false,
               title: route.params?.habitId ? 'Edit Habit' : 'New Habit',
               headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
