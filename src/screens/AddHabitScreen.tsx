@@ -81,7 +81,7 @@ function PresetCard({
         <View style={[s.presetIconWrap, selected && s.presetIconWrapSelected]}>
           <Text style={s.presetIconEmoji}>{item.emoji}</Text>
         </View>
-        <Text style={[s.presetLabel, selected && s.presetLabelSelected]} numberOfLines={2}>{item.label}</Text>
+        <Text style={[s.presetLabel, selected && s.presetLabelSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{item.label}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -265,7 +265,16 @@ export default function AddHabitScreen() {
           {/* Details */}
           {!isEdit && <Text style={s.sectionLabel}>Details</Text>}
           <View style={s.card}>
-            <Text style={s.fieldLabel}>Name</Text>
+            <Text style={s.fieldLabel}>When</Text>
+            <View style={{ marginTop: -2 }}>
+              <NativeSegmented
+                value={timeChoice}
+                onChange={(next: string) => { haptic.tap(); setTimeChoice(next); }}
+                options={TIMES.map((t) => ({ value: t, label: t }))}
+              />
+            </View>
+
+            <Text style={[s.fieldLabel, { marginTop: 18 }]}>Name</Text>
             <View style={s.nameRow}>
               <View style={s.nameIcon}>
                 <Text style={s.nameIconText}>{icon}</Text>
@@ -292,15 +301,6 @@ export default function AddHabitScreen() {
                 );
               })}
             </ScrollView>
-
-            <Text style={[s.fieldLabel, { marginTop: 18 }]}>When</Text>
-            <View style={{ marginTop: 10 }}>
-              <NativeSegmented
-                value={timeChoice}
-                onChange={(next: string) => { haptic.tap(); setTimeChoice(next); }}
-                options={TIMES.map((t) => ({ value: t, label: t }))}
-              />
-            </View>
           </View>
 
           {mode === 'shared' && !isEdit && (
@@ -339,12 +339,12 @@ const s = StyleSheet.create({
     marginHorizontal: -SCREEN_PADDING,
   },
   presetCard: {
-    height: 148,
+    height: 98,
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: S.card,
     borderRadius: 18,
-    paddingVertical: 18,
     paddingHorizontal: 8,
     ...cardShadow,
   },
@@ -352,9 +352,9 @@ const s = StyleSheet.create({
     backgroundColor: S.accent,
   },
   presetIconWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: S.bg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -363,7 +363,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   presetIconEmoji: {
-    fontSize: 27,
+    fontSize: 23,
   },
   presetLabel: {
     fontSize: 13,

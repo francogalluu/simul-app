@@ -105,7 +105,7 @@ export default function RootNavigator() {
               // Native iOS sheet with a native header. One flat background colour throughout
               // (no translucent header band). Editing is a short sheet, creating a taller one.
               presentation: 'formSheet',
-              sheetAllowedDetents: route.params?.habitId ? [0.46, 1] : [0.78, 1],
+              sheetAllowedDetents: route.params?.habitId ? [0.46, 1] : [0.775, 1],
               sheetInitialDetentIndex: 0,
               sheetGrabberVisible: true,
               sheetExpandsWhenScrolledToEdge: true,
