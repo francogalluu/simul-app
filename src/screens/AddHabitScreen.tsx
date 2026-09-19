@@ -190,8 +190,14 @@ export default function AddHabitScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       unstable_headerRightItems: () => [
-        ...(isEdit
+        ...(isEdit && editing
           ? [
+              {
+                type: 'button' as const,
+                label: 'Stats',
+                icon: { type: 'sfSymbol' as const, name: 'chart.bar.xaxis' as const },
+                onPress: () => navigation.navigate('HabitStats', { habitId: editing.id }),
+              },
               {
                 type: 'button' as const,
                 label: isPendingInvite ? 'Cancel invite' : 'Delete habit',

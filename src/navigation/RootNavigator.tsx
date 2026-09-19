@@ -7,6 +7,7 @@ import type { RootStackParamList } from './types';
 
 import TabNavigator from './TabNavigator';
 import AddHabitScreen from '@/screens/AddHabitScreen';
+import HabitStatsScreen from '@/screens/HabitStatsScreen';
 import AddGoalScreen from '@/screens/AddGoalScreen';
 import MailboxScreen from '@/screens/MailboxScreen';
 import AchievementsScreen from '@/screens/AchievementsScreen';
@@ -124,6 +125,26 @@ export default function RootNavigator() {
                   icon: { type: 'sfSymbol', name: 'xmark' },
                   onPress: () => navigation.goBack(),
                 },
+              ],
+            })}
+          />
+          <Stack.Screen
+            name="HabitStats"
+            component={HabitStatsScreen}
+            options={({ navigation }) => ({
+              // Native sheet on top of the edit sheet, with the same flat background.
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.86, 1],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: S.bg },
+              headerShown: true,
+              headerStyle: { backgroundColor: S.bg },
+              headerShadowVisible: false,
+              title: 'Stats',
+              headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+              unstable_headerLeftItems: () => [
+                { type: 'button', label: 'Close', icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
               ],
             })}
           />
