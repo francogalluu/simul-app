@@ -48,7 +48,8 @@
       "expo-localization",
       "expo-splash-screen",
       "expo-status-bar",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withUIScene"
     ],
     "owner": "franco-galluzzo"
   }
