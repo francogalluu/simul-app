@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
@@ -78,6 +79,7 @@ export function TaskList({
   onEdit: (habit: Habit) => void;
   onAddHabit: () => void;
 }) {
+  const { t } = useTranslation();
   const partner = partnerOf(me);
   const people = usePeople();
   const visible = habits.filter(
@@ -85,8 +87,8 @@ export function TaskList({
   );
 
   const sections = [
-    { key: 'together', label: 'Together', people: ['A', 'S'] as Person[], items: visible.filter((h) => h.owner === 'both') },
-    { key: 'me', label: 'You', people: [me], items: visible.filter((h) => h.owner === me) },
+    { key: 'together', label: t('home.together'), people: ['A', 'S'] as Person[], items: visible.filter((h) => h.owner === 'both') },
+    { key: 'me', label: t('home.you'), people: [me], items: visible.filter((h) => h.owner === me) },
     { key: 'partner', label: people[partner].name, people: [partner], items: visible.filter((h) => h.owner === partner) },
   ].filter((s) => s.items.length > 0);
 
@@ -94,9 +96,9 @@ export function TaskList({
     return (
       <EmptyState
         icon="🌱"
-        title={readOnly ? 'Nothing here yet' : 'No habits yet'}
-        body={readOnly ? 'No habits existed on this day.' : 'Add your first habit — for yourself, or one to do together.'}
-        actionLabel={readOnly ? undefined : 'Add a habit'}
+        title={readOnly ? t('home.emptyTitleReadOnly') : t('home.emptyTitle')}
+        body={readOnly ? t('home.emptyBodyReadOnly') : t('home.emptyBody')}
+        actionLabel={readOnly ? undefined : t('home.addHabit')}
         onAction={readOnly ? undefined : onAddHabit}
       />
     );
@@ -166,18 +168,20 @@ function TaskRow({
   onToggle: () => void;
   onLongPress?: () => void;
 }) {
+  const { t } = useTranslation();
   const partner = partnerOf(me);
   const partnerName = usePeople()[partner].name;
+  const timeLabel = t(`times.${habit.time}`, { defaultValue: habit.time });
   const k = state.kind;
   const isDone = k === 'done' || k === 'partner-only-done';
   const dimmed = k === 'pending-invite';
   const canToggle = !readOnly && (k === 'todo' || k === 'done' || k === 'waiting-partner' || k === 'partner-waiting');
 
   const meta = (() => {
-    if (k === 'pending-invite') return <Text style={styles.meta}>Waiting for {partnerName} to accept</Text>;
+    if (k === 'pending-invite') return <Text style={styles.meta}>{t('home.waitingToAccept', { name: partnerName })}</Text>;
     return (
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>{habit.time}</Text>
+        <Text style={styles.meta}>{timeLabel}</Text>
         <Text style={styles.meta}> • </Text>
         {habit.owner === 'both' ? (
           <View style={styles.metaAvatarDuo}>
@@ -257,7 +261,7 @@ function TaskRow({
           </Text>
           {k === 'pending-invite' && (
             <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>Pending</Text>
+              <Text style={styles.pendingBadgeText}>{t('home.pending')}</Text>
             </View>
           )}
         </View>
@@ -273,7 +277,7 @@ function TaskRow({
           style={styles.celebrate}
           pointerEvents="none"
         >
-          <Text style={styles.celebrateText}>Together! 🎉</Text>
+          <Text style={styles.celebrateText}>{t('home.celebrate')}</Text>
         </Animated.View>
       )}
     </Pressable>

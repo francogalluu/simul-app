@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import Svg, { Circle } from 'react-native-svg';
@@ -31,6 +32,7 @@ export function CalendarCard({
   completions: Completions;
   onSelectDate: (date: string) => void;
 }) {
+  const { t: tr } = useTranslation();
   const t = today();
   const people = usePeople();
   const selected = new Date(selectedDate + 'T00:00:00');
@@ -53,7 +55,7 @@ export function CalendarCard({
     [weekDates, selectedDate, habits, completions, t, locale],
   );
 
-  const title = selectedDate === t ? 'Today' : format(selected, 'EEEE', { locale });
+  const title = selectedDate === t ? tr('common.today') : format(selected, 'EEEE', { locale });
   const subtitle = format(selected, 'MMMM yyyy', { locale });
 
   return (
@@ -74,7 +76,7 @@ export function CalendarCard({
             </View>
           </View>
           <Text style={styles.streakText}>
-            {togetherStreak} {togetherStreak === 1 ? 'Day' : 'Days'}
+            {tr('home.day', { count: togetherStreak })}
           </Text>
         </View>
       </View>

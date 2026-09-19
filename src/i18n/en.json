@@ -22,7 +22,8 @@
   "tabs": {
     "home": "Home",
     "goals": "Goals",
-    "settings": "Settings"
+    "settings": "Settings",
+    "add": "Add"
   },
   "settings": {
     "title": "Settings",
@@ -119,5 +120,172 @@
     "name_required": "Enter your name first.",
     "link_expired": "That sign-in link expired or was already used. Request a new one.",
     "link_other_device": "Open the sign-in link on the same phone where you entered your email, or request a new one here."
+  },
+  "home": {
+    "together": "Together",
+    "you": "You",
+    "emptyTitle": "No habits yet",
+    "emptyTitleReadOnly": "Nothing here yet",
+    "emptyBody": "Add your first habit — for yourself, or one to do together.",
+    "emptyBodyReadOnly": "No habits existed on this day.",
+    "addHabit": "Add a habit",
+    "waitingToAccept": "Waiting for {{name}} to accept",
+    "pending": "Pending",
+    "celebrate": "Together! 🎉",
+    "day_one": "{{count}} Day",
+    "day_other": "{{count}} Days",
+    "mailbox": "Mailbox",
+    "achievements": "Achievements"
+  },
+  "times": {
+    "Morning": "Morning",
+    "Afternoon": "Afternoon",
+    "Evening": "Evening",
+    "All day": "All day"
+  },
+  "mailbox": {
+    "title": "Mailbox",
+    "emptyTitle": "Nothing in your mailbox",
+    "emptyBody": "When {{name}} invites you to a shared habit, it'll show up here for you to accept.",
+    "emptyAction": "Invite {{name}} to a habit",
+    "requests": "Requests for you",
+    "wantsTogetherTail": "wants to do this together",
+    "everyDayBoth": "every day, both of you",
+    "decline": "Decline",
+    "accept": "Accept",
+    "waitingOn": "Waiting on {{name}}",
+    "sentWaiting": "Sent • waiting for {{name}} to accept",
+    "cancel": "Cancel"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "noneYet": "No badges yet",
+    "ofTotal": "{{unlocked}} of {{total}}",
+    "bodyNone": "Complete your first habit to earn one. Some badges stay hidden until you find them.",
+    "bodyProgress": "{{count}} to go. A few are secret — keep going to reveal them.",
+    "secretTitle": "Secret badge",
+    "secretBody": "Keep going to reveal this one.",
+    "unlocked": "Unlocked ✓",
+    "items": {
+      "first-step": {
+        "title": "First step",
+        "description": "Complete your first habit."
+      },
+      "together-first": {
+        "title": "Better together",
+        "description": "Finish a shared habit with your partner."
+      },
+      "inviter": {
+        "title": "Team player",
+        "description": "Invite your partner to a shared habit."
+      },
+      "streak-3": {
+        "title": "On a roll",
+        "description": "Keep a 3-day streak."
+      },
+      "streak-7": {
+        "title": "One week strong",
+        "description": "Keep a 7-day streak."
+      },
+      "together-7": {
+        "title": "In sync",
+        "description": "A 7-day streak, together."
+      },
+      "habits-5": {
+        "title": "Full plate",
+        "description": "Have 5 active habits at once."
+      },
+      "completions-50": {
+        "title": "Half century",
+        "description": "Complete 50 habits in total."
+      },
+      "goal-first": {
+        "title": "Goal getter",
+        "description": "Reach a long-term goal."
+      },
+      "streak-30": {
+        "title": "Habit master",
+        "description": "Keep a 30-day streak."
+      },
+      "together-30": {
+        "title": "Inseparable",
+        "description": "A 30-day streak, together."
+      },
+      "perfect-week": {
+        "title": "Perfect week",
+        "description": "Every single day of a week, done together."
+      },
+      "comeback": {
+        "title": "The comeback",
+        "description": "Came back after a few days away. Welcome back."
+      },
+      "together-14": {
+        "title": "Two weeks deep",
+        "description": "A 14-day streak, together."
+      }
+    }
+  },
+  "stats": {
+    "title": "Stats",
+    "streak": "Streak",
+    "best": "Best",
+    "days30": "30 days",
+    "total": "Total",
+    "consistency": "Consistency",
+    "empty": "Complete this habit to see your trend.",
+    "last7": "Done in the last 7 days",
+    "ago30": "30 days ago"
+  },
+  "habit": {
+    "newTitle": "New Habit",
+    "editTitle": "Edit Habit",
+    "who": "Who is this for",
+    "justMe": "Just me",
+    "withPartner": "With {{name}}",
+    "quickPick": "Quick pick",
+    "details": "Details",
+    "when": "When",
+    "name": "Name",
+    "icon": "Icon",
+    "namePlaceholder": "e.g. Morning stretch",
+    "save": "Save changes",
+    "add": "Add habit",
+    "invite": "Invite {{name}}",
+    "deleteHabit": "Delete habit",
+    "cancelInvite": "Cancel invite",
+    "deleteTitle": "Delete habit?",
+    "cancelInviteTitle": "Cancel invite?",
+    "cancelInviteBody": "{{name}} won't see \"{{habit}}\" anymore.",
+    "deleteBody": "\"{{habit}}\" and its history will be removed.",
+    "deleteBodyShared": "\"{{habit}}\" and its history will be removed for both you and {{name}}.",
+    "keep": "Keep",
+    "inviteSent": "Invite sent 💌",
+    "inviteSentJoined": "{{name}} will find \"{{habit}}\" in their mailbox. It shows as pending on your Home until they accept.",
+    "inviteSentWaiting": "\"{{habit}}\" will be waiting in your partner's mailbox as soon as they join with your invite code (Settings → Household).",
+    "who_together": "Together with {{name}}",
+    "who_you": "Just you",
+    "who_partner": "{{name}}'s habit",
+    "presets": {
+      "drinkWater": "Drink water",
+      "meditate": "Meditate",
+      "eveningWalk": "Evening walk",
+      "read": "Read",
+      "workout": "Workout",
+      "eatVegetables": "Eat vegetables",
+      "sleepEarly": "Sleep early",
+      "gratitudeJournal": "Gratitude journal",
+      "tidyUp": "Tidy up",
+      "noSmoking": "No smoking",
+      "skincare": "Skincare",
+      "coldShower": "Cold shower",
+      "floss": "Floss",
+      "takeVitamins": "Take vitamins",
+      "morningRun": "Morning run",
+      "noPhoneInBed": "No phone in bed",
+      "budgetCheckIn": "Budget check-in",
+      "practiceLanguage": "Practice language",
+      "callFamily": "Call family",
+      "journal": "Journal"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { S } from './simulTheme';
 import { avatarPublicUrl } from './avatarUpload';
 import { useHouseholdStore } from '@/store/householdStore';
@@ -26,10 +27,12 @@ export interface PersonInfo {
 export type People = Record<Person, PersonInfo>;
 
 const FALLBACK_COLOR: Record<Person, string> = { A: S.personA, S: S.personB };
-const PLACEHOLDER = 'Partner';
-
-const info = (p: Person, member: { displayName: string; color: string; avatarPath: string | null } | undefined): PersonInfo => {
-  const clean = member?.displayName?.trim() || PLACEHOLDER;
+const info = (
+  p: Person,
+  member: { displayName: string; color: string; avatarPath: string | null } | undefined,
+  placeholder: string,
+): PersonInfo => {
+  const clean = member?.displayName?.trim() || placeholder;
   return {
     name: clean,
     initial: Array.from(clean)[0]?.toUpperCase() ?? '?',
@@ -46,8 +49,11 @@ export const involves = (owner: Owner, p: Person): boolean => owner === 'both' |
 
 /** Display info for both slots, from the live household roster. */
 export function usePeople(): People {
+  const { t } = useTranslation();
   const members = useHouseholdStore((s) => s.members);
-  return useMemo(() => ({ A: info('A', members[0]), S: info('S', members[1]) }), [members]);
+  // Until the partner joins their slot shows a translated "Partner" placeholder.
+  const placeholder = t('settings.partner');
+  return useMemo(() => ({ A: info('A', members[0], placeholder), S: info('S', members[1], placeholder) }), [members, placeholder]);
 }
 
 /** The signed-in user's slot. */

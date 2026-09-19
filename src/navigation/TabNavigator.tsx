@@ -41,7 +41,7 @@ export default function TabNavigator() {
         name="Add"
         component={AddPlaceholder}
         options={{
-          tabBarLabel: t('tabs.add', { defaultValue: 'Add' }),
+          tabBarLabel: t('tabs.add'),
           tabBarIcon: { type: 'sfSymbol', name: 'plus.circle.fill' },
           tabBarSelectionEnabled: false,
         }}
@@ -62,9 +62,9 @@ export default function TabNavigator() {
           headerShown: true,
           title: t('settings.title'),
           headerLargeTitleEnabled: true,
+          headerTransparent: false,
           headerStyle: { backgroundColor: S.bg },
           headerShadowVisible: false,
-          headerLargeStyle: { backgroundColor: S.bg },
           headerLargeTitleShadowVisible: false,
           headerLargeTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
           headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },

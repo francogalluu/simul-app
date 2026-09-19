@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
@@ -21,27 +22,27 @@ import { NativeSegmented, useNativeConfirm } from '@/components/NativeControls';
 
 type Mode = 'single' | 'shared';
 
-const PRESETS: Array<{ emoji: string; label: string; time: string }> = [
-  { emoji: '💧', label: 'Drink water', time: 'All day' },
-  { emoji: '🧘', label: 'Meditate', time: 'Morning' },
-  { emoji: '🚶', label: 'Evening walk', time: 'Evening' },
-  { emoji: '📖', label: 'Read', time: 'Evening' },
-  { emoji: '🏋️', label: 'Workout', time: 'Morning' },
-  { emoji: '🥗', label: 'Eat vegetables', time: 'All day' },
-  { emoji: '😴', label: 'Sleep early', time: 'Evening' },
-  { emoji: '🙏', label: 'Gratitude journal', time: 'Evening' },
-  { emoji: '🧹', label: 'Tidy up', time: 'Evening' },
-  { emoji: '🚭', label: 'No smoking', time: 'All day' },
-  { emoji: '🧴', label: 'Skincare', time: 'Evening' },
-  { emoji: '🚿', label: 'Cold shower', time: 'Morning' },
-  { emoji: '🦷', label: 'Floss', time: 'Evening' },
-  { emoji: '💊', label: 'Take vitamins', time: 'Morning' },
-  { emoji: '🏃', label: 'Morning run', time: 'Morning' },
-  { emoji: '📵', label: 'No phone in bed', time: 'Evening' },
-  { emoji: '💰', label: 'Budget check-in', time: 'Afternoon' },
-  { emoji: '🗣️', label: 'Practice language', time: 'Afternoon' },
-  { emoji: '📞', label: 'Call family', time: 'Afternoon' },
-  { emoji: '✍️', label: 'Journal', time: 'Evening' },
+const PRESETS: Array<{ emoji: string; key: string; time: string }> = [
+  { emoji: '💧', key: 'drinkWater', time: 'All day' },
+  { emoji: '🧘', key: 'meditate', time: 'Morning' },
+  { emoji: '🚶', key: 'eveningWalk', time: 'Evening' },
+  { emoji: '📖', key: 'read', time: 'Evening' },
+  { emoji: '🏋️', key: 'workout', time: 'Morning' },
+  { emoji: '🥗', key: 'eatVegetables', time: 'All day' },
+  { emoji: '😴', key: 'sleepEarly', time: 'Evening' },
+  { emoji: '🙏', key: 'gratitudeJournal', time: 'Evening' },
+  { emoji: '🧹', key: 'tidyUp', time: 'Evening' },
+  { emoji: '🚭', key: 'noSmoking', time: 'All day' },
+  { emoji: '🧴', key: 'skincare', time: 'Evening' },
+  { emoji: '🚿', key: 'coldShower', time: 'Morning' },
+  { emoji: '🦷', key: 'floss', time: 'Evening' },
+  { emoji: '💊', key: 'takeVitamins', time: 'Morning' },
+  { emoji: '🏃', key: 'morningRun', time: 'Morning' },
+  { emoji: '📵', key: 'noPhoneInBed', time: 'Evening' },
+  { emoji: '💰', key: 'budgetCheckIn', time: 'Afternoon' },
+  { emoji: '🗣️', key: 'practiceLanguage', time: 'Afternoon' },
+  { emoji: '📞', key: 'callFamily', time: 'Afternoon' },
+  { emoji: '✍️', key: 'journal', time: 'Evening' },
 ];
 
 const ICONS = ['⭐', '💧', '🧘', '🚶', '📖', '🏋️', '🥗', '😴', '🙏', '🧹', '🚭', '🧴', '🚿', '🦷', '💊', '🏃', '📵', '💰', '🗣️', '📞', '✍️', '🍳', '🎸', '🧠', '☀️', '🌙', '🐶', '💻', '🎨', '🧺'];
@@ -59,12 +60,14 @@ const MIDDLE_START = Math.floor(LOOP_COPIES / 2) * PRESETS.length;
 
 function PresetCard({
   item,
+  label,
   index,
   scrollX,
   selected,
   onPress,
 }: {
   item: (typeof PRESETS)[number];
+  label: string;
   index: number;
   scrollX: SharedValue<number>;
   selected: boolean;
@@ -81,7 +84,7 @@ function PresetCard({
         <View style={[s.presetIconWrap, selected && s.presetIconWrapSelected]}>
           <Text style={s.presetIconEmoji}>{item.emoji}</Text>
         </View>
-        <Text style={[s.presetLabel, selected && s.presetLabelSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{item.label}</Text>
+        <Text style={[s.presetLabel, selected && s.presetLabelSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -92,6 +95,8 @@ function PresetCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AddHabitScreen() {
+  const { t } = useTranslation();
+  const presetLabel = (preset: (typeof PRESETS)[number]) => t(`habit.presets.${preset.key}`);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddHabit'>>();
   const habitId = route.params?.habitId;
@@ -111,8 +116,8 @@ export default function AddHabitScreen() {
   const [name, setName] = useState(editing?.name ?? '');
   const [icon, setIcon] = useState(editing?.icon ?? '⭐');
   const [timeChoice, setTimeChoice] = useState<string>(() => {
-    const t = editing?.time ?? 'All day';
-    return TIMES.includes(t) ? t : 'All day';
+    const saved = editing?.time ?? 'All day';
+    return TIMES.includes(saved) ? saved : 'All day';
   });
 
   const scrollX = useSharedValue(MIDDLE_START * SNAP);
@@ -127,7 +132,7 @@ export default function AddHabitScreen() {
 
   const handlePreset = (preset: (typeof PRESETS)[number], index: number) => {
     haptic.tap();
-    setName(preset.label);
+    setName(presetLabel(preset));
     setIcon(preset.emoji);
     setTimeChoice(preset.time);
     carouselRef.current?.scrollToOffset({ offset: index * SNAP, animated: true });
@@ -150,11 +155,11 @@ export default function AddHabitScreen() {
       addHabit({ name: trimmed, time, icon, owner: 'both' });
       haptic.success();
       Alert.alert(
-        'Invite sent 💌',
+        t('habit.inviteSent'),
         partner.joined
-          ? `${partnerName} will find "${trimmed}" in their mailbox. It shows as pending on your Home until they accept.`
-          : `"${trimmed}" will be waiting in your partner's mailbox as soon as they join with your invite code (Settings → Household).`,
-        [{ text: 'OK', onPress: close }],
+          ? t('habit.inviteSentJoined', { name: partnerName, habit: trimmed })
+          : t('habit.inviteSentWaiting', { habit: trimmed }),
+        [{ text: t('common.ok'), onPress: close }],
       );
       return;
     }
@@ -169,12 +174,14 @@ export default function AddHabitScreen() {
   const handleDelete = () => {
     if (!editing) return;
     confirm({
-      title: isPendingInvite ? 'Cancel invite?' : 'Delete habit?',
+      title: isPendingInvite ? t('habit.cancelInviteTitle') : t('habit.deleteTitle'),
       message: isPendingInvite
-        ? `${partnerName} won't see "${editing.name}" anymore.`
-        : `"${editing.name}" and its history will be removed${editing.owner === 'both' ? ` for both you and ${partnerName}` : ''}.`,
-      confirmLabel: isPendingInvite ? 'Cancel invite' : 'Delete',
-      cancelLabel: 'Keep',
+        ? t('habit.cancelInviteBody', { name: partnerName, habit: editing.name })
+        : editing.owner === 'both'
+          ? t('habit.deleteBodyShared', { habit: editing.name, name: partnerName })
+          : t('habit.deleteBody', { habit: editing.name }),
+      confirmLabel: isPendingInvite ? t('habit.cancelInvite') : t('common.delete'),
+      cancelLabel: t('habit.keep'),
       onConfirm: () => { haptic.warning(); removeHabit(editing.id); close(); },
     });
   };
@@ -194,13 +201,13 @@ export default function AddHabitScreen() {
           ? [
               {
                 type: 'button' as const,
-                label: 'Stats',
+                label: t('stats.title'),
                 icon: { type: 'sfSymbol' as const, name: 'chart.bar.xaxis' as const },
                 onPress: () => navigation.navigate('HabitStats', { habitId: editing.id }),
               },
               {
                 type: 'button' as const,
-                label: isPendingInvite ? 'Cancel invite' : 'Delete habit',
+                label: isPendingInvite ? t('habit.cancelInvite') : t('habit.deleteHabit'),
                 icon: { type: 'sfSymbol' as const, name: 'trash' as const },
                 tintColor: S.danger,
                 onPress: handleDelete,
@@ -209,7 +216,7 @@ export default function AddHabitScreen() {
           : []),
         {
           type: 'button' as const,
-          label: isEdit ? 'Save changes' : mode === 'shared' ? `Invite ${partnerName}` : 'Add habit',
+          label: isEdit ? t('habit.save') : mode === 'shared' ? t('habit.invite', { name: partnerName }) : t('habit.add'),
           icon: { type: 'sfSymbol' as const, name: 'checkmark' as const },
           // Plain (not prominent) so it sits inside the same glass capsule as stats and trash.
           variant: 'plain' as const,
@@ -230,13 +237,13 @@ export default function AddHabitScreen() {
           {/* Who (new habits only: the owner of an existing habit can't change) */}
           {!isEdit && (
             <>
-              <Text style={s.sectionLabel}>Who is this for</Text>
+              <Text style={s.sectionLabel}>{t('habit.who')}</Text>
               <NativeSegmented
                 value={mode}
                 onChange={(next: Mode) => { haptic.tap(); setMode(next); }}
                 options={[
-                  { value: 'single', label: 'Just me' },
-                  { value: 'shared', label: `With ${partnerName}` },
+                  { value: 'single', label: t('habit.justMe') },
+                  { value: 'shared', label: t('habit.withPartner', { name: partnerName }) },
                 ]}
               />
             </>
@@ -245,13 +252,13 @@ export default function AddHabitScreen() {
           {/* Quick pick (new habits only) */}
           {!isEdit && (
             <>
-              <Text style={s.sectionLabel}>Quick pick</Text>
+              <Text style={s.sectionLabel}>{t('habit.quickPick')}</Text>
               <View style={s.carouselBleed}>
                 <Animated.FlatList
                   ref={carouselRef}
                   data={LOOPED}
                   horizontal
-                  keyExtractor={(item, index) => `${item.label}-${index}`}
+                  keyExtractor={(item, index) => `${item.key}-${index}`}
                   showsHorizontalScrollIndicator={false}
                   snapToInterval={SNAP}
                   decelerationRate="fast"
@@ -262,7 +269,7 @@ export default function AddHabitScreen() {
                   getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}
                   contentContainerStyle={{ paddingHorizontal: Math.max((screenWidth - ITEM_WIDTH) / 2, SCREEN_PADDING) }}
                   renderItem={({ item, index }) => (
-                    <PresetCard item={item} index={index} scrollX={scrollX} selected={name === item.label} onPress={() => handlePreset(item, index)} />
+                    <PresetCard item={item} label={presetLabel(item)} index={index} scrollX={scrollX} selected={name === presetLabel(item)} onPress={() => handlePreset(item, index)} />
                   )}
                 />
               </View>
@@ -270,18 +277,18 @@ export default function AddHabitScreen() {
           )}
 
           {/* Details */}
-          {!isEdit && <Text style={s.sectionLabel}>Details</Text>}
+          {!isEdit && <Text style={s.sectionLabel}>{t('habit.details')}</Text>}
           <View style={s.card}>
-            <Text style={s.fieldLabel}>When</Text>
+            <Text style={s.fieldLabel}>{t('habit.when')}</Text>
             <View style={{ marginTop: -2 }}>
               <NativeSegmented
                 value={timeChoice}
                 onChange={(next: string) => { haptic.tap(); setTimeChoice(next); }}
-                options={TIMES.map((t) => ({ value: t, label: t }))}
+                options={TIMES.map((time) => ({ value: time, label: t(`times.${time}`) }))}
               />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 18 }]}>Name</Text>
+            <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.name')}</Text>
             <View style={s.nameRow}>
               <View style={s.nameIcon}>
                 <Text style={s.nameIconText}>{icon}</Text>
@@ -289,7 +296,7 @@ export default function AddHabitScreen() {
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g. Morning stretch"
+                placeholder={t('habit.namePlaceholder')}
                 placeholderTextColor={S.muted}
                 style={[s.input, { flex: 1 }]}
                 returnKeyType="done"
@@ -297,7 +304,7 @@ export default function AddHabitScreen() {
               />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 18 }]}>Icon</Text>
+            <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.icon')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow} keyboardShouldPersistTaps="handled">
               {ICONS.map((emoji) => {
                 const selected = emoji === icon;

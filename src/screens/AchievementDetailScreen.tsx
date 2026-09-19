@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
@@ -13,6 +14,7 @@ import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
 
 // Detail of one badge, presented as a native formSheet (see RootNavigator).
 export default function AchievementDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, 'AchievementDetail'>>();
   const me = useMe();
@@ -38,8 +40,8 @@ export default function AchievementDetailScreen() {
           {secretLocked ? '?' : achievement.icon}
         </Text>
       </View>
-      <Text style={styles.title}>{secretLocked ? 'Secret badge' : achievement.title}</Text>
-      <Text style={styles.body}>{secretLocked ? 'Keep going to reveal this one.' : achievement.description}</Text>
+      <Text style={styles.title}>{secretLocked ? t('achievements.secretTitle') : t(`achievements.items.${achievement.id}.title`, { defaultValue: achievement.title })}</Text>
+      <Text style={styles.body}>{secretLocked ? t('achievements.secretBody') : t(`achievements.items.${achievement.id}.description`, { defaultValue: achievement.description })}</Text>
 
       {achievement.progress && !achievement.unlocked && (
         <View style={styles.progress}>
@@ -49,7 +51,7 @@ export default function AchievementDetailScreen() {
           </Text>
         </View>
       )}
-      {achievement.unlocked && <Text style={styles.unlocked}>Unlocked ✓</Text>}
+      {achievement.unlocked && <Text style={styles.unlocked}>{t('achievements.unlocked')}</Text>}
     </View>
   );
 }

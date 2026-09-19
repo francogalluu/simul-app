@@ -68,6 +68,7 @@ function LoadError() {
 }
 
 export default function RootNavigator() {
+  const { t } = useTranslation();
   useSessionSync();
   const authStatus = useAuthStore((s) => s.status);
   const householdStatus = useHouseholdStore((s) => s.status);
@@ -114,12 +115,12 @@ export default function RootNavigator() {
               headerTransparent: false,
               headerStyle: { backgroundColor: S.bg },
               headerShadowVisible: false,
-              title: route.params?.habitId ? 'Edit Habit' : 'New Habit',
+              title: route.params?.habitId ? t('habit.editTitle') : t('habit.newTitle'),
               headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
               unstable_headerLeftItems: () => [
                 {
                   type: 'button',
-                  label: 'Close',
+                  label: t('common.close'),
                   icon: { type: 'sfSymbol', name: 'xmark' },
                   onPress: () => navigation.goBack(),
                 },
@@ -139,16 +140,16 @@ export default function RootNavigator() {
               headerShown: true,
               headerStyle: { backgroundColor: S.bg },
               headerShadowVisible: false,
-              title: 'Stats',
+              title: t('stats.title'),
               headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
               unstable_headerLeftItems: () => [
-                { type: 'button', label: 'Close', icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
+                { type: 'button', label: t('common.close'), icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
               ],
             })}
           />
           <Stack.Screen name="AddGoal" component={AddGoalScreen} options={{ presentation: 'modal' }} />
-          <Stack.Screen name="Mailbox" component={MailboxScreen} options={nativeLargeTitle('Mailbox')} />
-          <Stack.Screen name="Achievements" component={AchievementsScreen} options={nativeLargeTitle('Achievements')} />
+          <Stack.Screen name="Mailbox" component={MailboxScreen} options={nativeLargeTitle(t('mailbox.title'))} />
+          <Stack.Screen name="Achievements" component={AchievementsScreen} options={nativeLargeTitle(t('achievements.title'))} />
           <Stack.Screen
             name="AchievementDetail"
             component={AchievementDetailScreen}
@@ -163,7 +164,7 @@ export default function RootNavigator() {
               headerShadowVisible: false,
               title: '',
               unstable_headerLeftItems: () => [
-                { type: 'button', label: 'Close', icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
+                { type: 'button', label: t('common.close'), icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
               ],
             })}
           />

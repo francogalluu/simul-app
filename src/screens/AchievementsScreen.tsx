@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +14,7 @@ import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 
 export default function AchievementsScreen() {
+  const { t } = useTranslation();
   const me = useMe();
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
@@ -35,13 +37,13 @@ export default function AchievementsScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.heroTop}>
-            <Text style={styles.heroTitle}>{unlockedCount === 0 ? 'No badges yet' : `${unlockedCount} of ${achievements.length}`}</Text>
+            <Text style={styles.heroTitle}>{unlockedCount === 0 ? t('achievements.noneYet') : t('achievements.ofTotal', { unlocked: unlockedCount, total: achievements.length })}</Text>
             <Text style={styles.heroEmoji}>{unlockedCount === 0 ? '🥚' : unlockedCount === achievements.length ? '👑' : '🏅'}</Text>
           </View>
           <Text style={styles.heroBody}>
             {unlockedCount === 0
-              ? 'Complete your first habit to earn one. Some badges stay hidden until you find them.'
-              : `${achievements.length - unlockedCount} to go. A few are secret — keep going to reveal them.`}
+              ? t('achievements.bodyNone')
+              : t('achievements.bodyProgress', { count: achievements.length - unlockedCount })}
           </Text>
           <View style={{ marginTop: 14 }}>
             <NativeProgress value={pct} color={S.gold} />
@@ -59,6 +61,7 @@ export default function AchievementsScreen() {
 }
 
 function Badge({ achievement: a, onPress }: { achievement: Achievement; onPress: () => void }) {
+  const { t } = useTranslation();
   const secretLocked = a.secret && !a.unlocked;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.badge, secretLocked && styles.badgeSecret, !a.unlocked && !secretLocked && styles.badgeLocked, pressed && { opacity: 0.8 }]}>
@@ -68,7 +71,7 @@ function Badge({ achievement: a, onPress }: { achievement: Achievement; onPress:
         </Text>
       </View>
       <Text style={[styles.badgeTitle, secretLocked && { color: 'rgba(255,255,255,0.7)' }, !a.unlocked && !secretLocked && { color: S.muted }]} numberOfLines={2}>
-        {secretLocked ? '???' : a.title}
+        {secretLocked ? '???' : t(`achievements.items.${a.id}.title`, { defaultValue: a.title })}
       </Text>
       {!a.unlocked && !secretLocked && (
         <View style={styles.lock}>

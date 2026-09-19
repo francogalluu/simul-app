@@ -22,7 +22,8 @@
   "tabs": {
     "home": "Inicio",
     "goals": "Metas",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "add": "Agregar"
   },
   "settings": {
     "title": "Ajustes",
@@ -119,5 +120,172 @@
     "name_required": "Primero ingresá tu nombre.",
     "link_expired": "Ese link expiró o ya se usó. Pedí uno nuevo.",
     "link_other_device": "Abrí el link en el mismo teléfono donde ingresaste tu email, o pedí uno nuevo acá."
+  },
+  "home": {
+    "together": "Juntos",
+    "you": "Vos",
+    "emptyTitle": "Todavía no hay hábitos",
+    "emptyTitleReadOnly": "Nada por acá todavía",
+    "emptyBody": "Sumá tu primer hábito: para vos, o para hacer en pareja.",
+    "emptyBodyReadOnly": "No había hábitos ese día.",
+    "addHabit": "Agregar un hábito",
+    "waitingToAccept": "Esperando que {{name}} acepte",
+    "pending": "Pendiente",
+    "celebrate": "¡Juntos! 🎉",
+    "day_one": "{{count}} día",
+    "day_other": "{{count}} días",
+    "mailbox": "Buzón",
+    "achievements": "Logros"
+  },
+  "times": {
+    "Morning": "Mañana",
+    "Afternoon": "Tarde",
+    "Evening": "Noche",
+    "All day": "Todo el día"
+  },
+  "mailbox": {
+    "title": "Buzón",
+    "emptyTitle": "Tu buzón está vacío",
+    "emptyBody": "Cuando {{name}} te invite a un hábito compartido, va a aparecer acá para que lo aceptes.",
+    "emptyAction": "Invitá a {{name}} a un hábito",
+    "requests": "Pedidos para vos",
+    "wantsTogetherTail": "quiere hacer esto en pareja",
+    "everyDayBoth": "todos los días, los dos",
+    "decline": "Rechazar",
+    "accept": "Aceptar",
+    "waitingOn": "Esperando a {{name}}",
+    "sentWaiting": "Enviado • esperando que {{name}} acepte",
+    "cancel": "Cancelar"
+  },
+  "achievements": {
+    "title": "Logros",
+    "noneYet": "Todavía no tenés insignias",
+    "ofTotal": "{{unlocked}} de {{total}}",
+    "bodyNone": "Completá tu primer hábito para ganar una. Algunas insignias quedan ocultas hasta que las descubras.",
+    "bodyProgress": "Faltan {{count}}. Algunas son secretas: seguí así para descubrirlas.",
+    "secretTitle": "Insignia secreta",
+    "secretBody": "Seguí así para descubrir esta.",
+    "unlocked": "Desbloqueado ✓",
+    "items": {
+      "first-step": {
+        "title": "Primer paso",
+        "description": "Completá tu primer hábito."
+      },
+      "together-first": {
+        "title": "Mejor juntos",
+        "description": "Completá un hábito compartido con tu pareja."
+      },
+      "inviter": {
+        "title": "Buen equipo",
+        "description": "Invitá a tu pareja a un hábito compartido."
+      },
+      "streak-3": {
+        "title": "En racha",
+        "description": "Mantené una racha de 3 días."
+      },
+      "streak-7": {
+        "title": "Una semana firme",
+        "description": "Mantené una racha de 7 días."
+      },
+      "together-7": {
+        "title": "En sintonía",
+        "description": "Una racha de 7 días, en pareja."
+      },
+      "habits-5": {
+        "title": "Plato completo",
+        "description": "Tené 5 hábitos activos a la vez."
+      },
+      "completions-50": {
+        "title": "Medio siglo",
+        "description": "Completá 50 hábitos en total."
+      },
+      "goal-first": {
+        "title": "Meta lograda",
+        "description": "Alcanzá una meta a largo plazo."
+      },
+      "streak-30": {
+        "title": "Maestro de hábitos",
+        "description": "Mantené una racha de 30 días."
+      },
+      "together-30": {
+        "title": "Inseparables",
+        "description": "Una racha de 30 días, en pareja."
+      },
+      "perfect-week": {
+        "title": "Semana perfecta",
+        "description": "Todos los días de una semana, hechos en pareja."
+      },
+      "comeback": {
+        "title": "La vuelta",
+        "description": "Volviste después de unos días. ¡Bienvenido de nuevo!"
+      },
+      "together-14": {
+        "title": "Dos semanas juntos",
+        "description": "Una racha de 14 días, en pareja."
+      }
+    }
+  },
+  "stats": {
+    "title": "Estadísticas",
+    "streak": "Racha",
+    "best": "Mejor",
+    "days30": "30 días",
+    "total": "Total",
+    "consistency": "Constancia",
+    "empty": "Completá este hábito para ver tu tendencia.",
+    "last7": "Cumplido en los últimos 7 días",
+    "ago30": "Hace 30 días"
+  },
+  "habit": {
+    "newTitle": "Nuevo hábito",
+    "editTitle": "Editar hábito",
+    "who": "Para quién es",
+    "justMe": "Solo yo",
+    "withPartner": "Con {{name}}",
+    "quickPick": "Sugerencias",
+    "details": "Detalles",
+    "when": "Cuándo",
+    "name": "Nombre",
+    "icon": "Ícono",
+    "namePlaceholder": "ej. Estirar por la mañana",
+    "save": "Guardar cambios",
+    "add": "Agregar hábito",
+    "invite": "Invitar a {{name}}",
+    "deleteHabit": "Eliminar hábito",
+    "cancelInvite": "Cancelar invitación",
+    "deleteTitle": "¿Eliminar el hábito?",
+    "cancelInviteTitle": "¿Cancelar la invitación?",
+    "cancelInviteBody": "{{name}} ya no va a ver \"{{habit}}\".",
+    "deleteBody": "\"{{habit}}\" y su historial se van a eliminar.",
+    "deleteBodyShared": "\"{{habit}}\" y su historial se van a eliminar para vos y para {{name}}.",
+    "keep": "Conservar",
+    "inviteSent": "Invitación enviada 💌",
+    "inviteSentJoined": "{{name}} va a encontrar \"{{habit}}\" en su buzón. Figura como pendiente en tu Inicio hasta que acepte.",
+    "inviteSentWaiting": "\"{{habit}}\" va a estar esperando en el buzón de tu pareja apenas se una con tu código de invitación (Ajustes → Hogar).",
+    "who_together": "En pareja con {{name}}",
+    "who_you": "Solo vos",
+    "who_partner": "Hábito de {{name}}",
+    "presets": {
+      "drinkWater": "Tomar agua",
+      "meditate": "Meditar",
+      "eveningWalk": "Caminata de la tarde",
+      "read": "Leer",
+      "workout": "Entrenar",
+      "eatVegetables": "Comer verduras",
+      "sleepEarly": "Dormir temprano",
+      "gratitudeJournal": "Diario de gratitud",
+      "tidyUp": "Ordenar",
+      "noSmoking": "No fumar",
+      "skincare": "Cuidado de la piel",
+      "coldShower": "Ducha fría",
+      "floss": "Hilo dental",
+      "takeVitamins": "Tomar vitaminas",
+      "morningRun": "Correr por la mañana",
+      "noPhoneInBed": "Sin celular en la cama",
+      "budgetCheckIn": "Revisar el presupuesto",
+      "practiceLanguage": "Practicar un idioma",
+      "callFamily": "Llamar a la familia",
+      "journal": "Escribir el diario"
+    }
   }
 }

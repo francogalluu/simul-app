@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
@@ -89,12 +90,13 @@ export function HomeTopBar({
   onMailbox: () => void;
   onAchievements: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.row}>
       <Text style={styles.brand}>Simul</Text>
       <View style={styles.right}>
         <GlassIconButton
-          label="Mailbox"
+          label={t('home.mailbox')}
           onPress={onMailbox}
           badge={
             unreadCount > 0 ? (
@@ -106,7 +108,7 @@ export function HomeTopBar({
         >
           <MailboxIcon size={24} />
         </GlassIconButton>
-        <GlassIconButton label="Achievements" onPress={onAchievements}>
+        <GlassIconButton label={t('home.achievements')} onPress={onAchievements}>
           <MedalIcon size={24} />
         </GlassIconButton>
       </View>

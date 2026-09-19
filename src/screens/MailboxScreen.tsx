@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -20,6 +21,7 @@ export default function MailboxScreen() {
   const habits = useTasksStore((s) => s.habits);
   const acceptInvite = useTasksStore((s) => s.acceptInvite);
   const declineInvite = useTasksStore((s) => s.declineInvite);
+  const { t } = useTranslation();
 
   const incoming = useMemo(() => habits.filter((h) => h.status === 'pending' && h.requestedBy === partner), [habits, partner]);
   const sent = useMemo(() => habits.filter((h) => h.status === 'pending' && h.requestedBy === me), [habits, me]);
@@ -39,23 +41,23 @@ export default function MailboxScreen() {
       {incoming.length === 0 && sent.length === 0 ? (
         <EmptyState
           icon="📭"
-          title="Nothing in your mailbox"
-          body={`When ${partnerName} invites you to a shared habit, it'll show up here for you to accept.`}
-          actionLabel={`Invite ${partnerName} to a habit`}
+          title={t('mailbox.emptyTitle')}
+          body={t('mailbox.emptyBody', { name: partnerName })}
+          actionLabel={t('mailbox.emptyAction', { name: partnerName })}
           onAction={() => navigation.navigate('AddHabit')}
         />
       ) : (
         <>
           {incoming.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>Requests for you</Text>
+              <Text style={styles.sectionLabel}>{t('mailbox.requests')}</Text>
               {incoming.map((h) => (
                 <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
                   <View style={styles.card}>
                     <View style={styles.fromRow}>
                       <Avatar person={partner} size={24} style={styles.fromAvatar} />
                       <Text style={styles.fromText}>
-                        <Text style={styles.fromName}>{partnerName}</Text> wants to do this together
+                        <Text style={styles.fromName}>{partnerName}</Text> {t('mailbox.wantsTogetherTail')}
                       </Text>
                     </View>
                     <View style={styles.habitRow}>
@@ -64,15 +66,15 @@ export default function MailboxScreen() {
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
-                        <Text style={styles.habitMeta}>{h.time} • every day, both of you</Text>
+                        <Text style={styles.habitMeta}>{t(`times.${h.time}`, { defaultValue: h.time })} • {t('mailbox.everyDayBoth')}</Text>
                       </View>
                     </View>
                     <View style={styles.actions}>
                       <Pressable onPress={() => decline(h)} style={({ pressed }) => [styles.ghostButton, pressed && { opacity: 0.7 }]}>
-                        <Text style={styles.ghostButtonText}>Decline</Text>
+                        <Text style={styles.ghostButtonText}>{t('mailbox.decline')}</Text>
                       </Pressable>
                       <Pressable onPress={() => accept(h)} style={({ pressed }) => [styles.acceptButton, pressed && { opacity: 0.9 }]}>
-                        <Text style={styles.acceptButtonText}>Accept</Text>
+                        <Text style={styles.acceptButtonText}>{t('mailbox.accept')}</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -83,7 +85,7 @@ export default function MailboxScreen() {
 
           {sent.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>Waiting on {partnerName}</Text>
+              <Text style={styles.sectionLabel}>{t('mailbox.waitingOn', { name: partnerName })}</Text>
               {sent.map((h) => (
                 <Animated.View key={h.id} exiting={FadeOut.duration(220)} layout={LinearTransition.springify()}>
                   <View style={[styles.card, styles.cardSent]}>
@@ -93,10 +95,10 @@ export default function MailboxScreen() {
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={styles.habitName} numberOfLines={1}>{h.name}</Text>
-                        <Text style={[styles.habitMeta, { color: S.amber }]}>Sent • waiting for {partnerName} to accept</Text>
+                        <Text style={[styles.habitMeta, { color: S.amber }]}>{t('mailbox.sentWaiting', { name: partnerName })}</Text>
                       </View>
                       <Pressable onPress={() => decline(h)} hitSlop={8} style={({ pressed }) => pressed && { opacity: 0.6 }}>
-                        <Text style={styles.cancelText}>Cancel</Text>
+                        <Text style={styles.cancelText}>{t('mailbox.cancel')}</Text>
                       </Pressable>
                     </View>
                   </View>

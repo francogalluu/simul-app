@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
+import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { SmoothChart } from '../../modules/simul-chart';
@@ -14,6 +15,7 @@ const WINDOW_DAYS = 30;
 
 // Per-habit stats, presented as a native formSheet from the edit-habit sheet (see RootNavigator).
 export default function HabitStatsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, 'HabitStats'>>();
   const me = useMe();
@@ -33,7 +35,7 @@ export default function HabitStatsScreen() {
   if (!habit || !stats) return null;
 
   const ratePct = stats.rate == null ? '–' : `${Math.round(stats.rate * 100)}%`;
-  const who = habit.owner === 'both' ? `Together with ${partnerName}` : habit.owner === me ? 'Just you' : `${partnerName}'s habit`;
+  const who = habit.owner === 'both' ? t('habit.who_together', { name: partnerName }) : habit.owner === me ? t('habit.who_you') : t('habit.who_partner', { name: partnerName });
 
   return (
     <ScrollView
@@ -48,31 +50,31 @@ export default function HabitStatsScreen() {
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.heroName} numberOfLines={1}>{habit.name}</Text>
-          <Text style={styles.heroSub}>{who} • {habit.time}</Text>
+          <Text style={styles.heroSub}>{who} • {t(`times.${habit.time}`, { defaultValue: habit.time })}</Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
-        <Stat emoji="🔥" value={`${stats.currentStreak}`} label="Streak" />
+        <Stat emoji="🔥" value={`${stats.currentStreak}`} label={t('stats.streak')} />
         <View style={styles.statDivider} />
-        <Stat emoji="🏆" value={`${stats.bestStreak}`} label="Best" />
+        <Stat emoji="🏆" value={`${stats.bestStreak}`} label={t('stats.best')} />
         <View style={styles.statDivider} />
-        <Stat emoji="🎯" value={ratePct} label="30 days" />
+        <Stat emoji="🎯" value={ratePct} label={t('stats.days30')} />
         <View style={styles.statDivider} />
-        <Stat emoji="✅" value={`${stats.totalDone}`} label="Total" />
+        <Stat emoji="✅" value={`${stats.totalDone}`} label={t('stats.total')} />
       </View>
 
-      <Text style={styles.sectionLabel}>Consistency</Text>
+      <Text style={styles.sectionLabel}>{t('stats.consistency')}</Text>
       <View style={styles.card}>
         {stats.bestStreak === 0 ? (
-          <Text style={styles.empty}>Complete this habit to see your trend.</Text>
+          <Text style={styles.empty}>{t('stats.empty')}</Text>
         ) : (
           <>
             <SmoothChart values={stats.trend.map((v) => v * 100)} maxValue={100} color={S.accent} style={styles.chart} />
             <View style={styles.chartCaption}>
-              <Text style={styles.captionText}>30 days ago</Text>
-              <Text style={styles.captionText}>Done in the last 7 days</Text>
-              <Text style={styles.captionText}>Today</Text>
+              <Text style={styles.captionText}>{t('stats.ago30')}</Text>
+              <Text style={styles.captionText}>{t('stats.last7')}</Text>
+              <Text style={styles.captionText}>{t('common.today')}</Text>
             </View>
           </>
         )}

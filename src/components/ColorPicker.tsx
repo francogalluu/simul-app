@@ -13,10 +13,11 @@ function CheckIcon() {
   );
 }
 
-/** Row of swatches from the curated palette, plus the native iOS color picker for custom colors. */
+/** Row of swatches from the curated palette, led by the native iOS color picker for custom colors. */
 export function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <NativeColorPicker value={value} onChange={(hex) => { haptic.tap(); onChange(hex); }} />
       {AVATAR_COLORS.map((color) => {
         const selected = color.toLowerCase() === value.toLowerCase();
         return (
@@ -33,7 +34,6 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (col
           </Pressable>
         );
       })}
-      <NativeColorPicker value={value} onChange={(hex) => { haptic.tap(); onChange(hex); }} />
     </ScrollView>
   );
 }
