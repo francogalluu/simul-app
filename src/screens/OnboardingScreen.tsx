@@ -8,7 +8,7 @@ import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/household
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { randomAvatarColor } from '@/lib/avatarColors';
-import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
+import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { TextField, PrimaryButton, ErrorText } from '@/components/FormControls';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
@@ -66,32 +66,34 @@ export default function OnboardingScreen() {
           <Text style={styles.subtitle}>{t('onboarding.subtitle')}</Text>
 
           <View style={styles.form}>
-            {userId && (
-              <View style={styles.avatarRow}>
-                <AvatarPicker
-                  userId={userId}
-                  value={avatar}
-                  color={color}
-                  initial={(cleanName(name)[0] ?? '?').toUpperCase()}
-                  onChange={setAvatar}
-                />
+            <View style={styles.card}>
+              {userId && (
+                <View style={styles.avatarRow}>
+                  <AvatarPicker
+                    userId={userId}
+                    value={avatar}
+                    color={color}
+                    initial={(cleanName(name)[0] ?? '?').toUpperCase()}
+                    onChange={setAvatar}
+                  />
+                </View>
+              )}
+
+              <TextField
+                label={t('onboarding.nameLabel')}
+                value={name}
+                onChangeText={(v) => { setName(v); setError(null); }}
+                placeholder={t('onboarding.namePlaceholder')}
+                autoComplete="given-name"
+                textContentType="givenName"
+                maxLength={MAX_NAME_LENGTH}
+                returnKeyType="done"
+              />
+
+              <View style={styles.colorBlock}>
+                <Text style={styles.colorLabel}>{t('onboarding.colorLabel')}</Text>
+                <ColorPicker value={color} onChange={setColor} />
               </View>
-            )}
-
-            <TextField
-              label={t('onboarding.nameLabel')}
-              value={name}
-              onChangeText={(v) => { setName(v); setError(null); }}
-              placeholder={t('onboarding.namePlaceholder')}
-              autoComplete="given-name"
-              textContentType="givenName"
-              maxLength={MAX_NAME_LENGTH}
-              returnKeyType="done"
-            />
-
-            <View style={styles.colorBlock}>
-              <Text style={styles.colorLabel}>{t('onboarding.colorLabel')}</Text>
-              <ColorPicker value={color} onChange={setColor} />
             </View>
 
             {mode === 'choose' ? (
@@ -172,6 +174,13 @@ const styles = StyleSheet.create({
   },
   option: {
     gap: 6,
+  },
+  card: {
+    backgroundColor: S.card,
+    borderRadius: 24,
+    padding: 18,
+    gap: 18,
+    ...cardShadow,
   },
   avatarRow: {
     alignItems: 'center',

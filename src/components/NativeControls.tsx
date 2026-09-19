@@ -163,6 +163,8 @@ const styles = StyleSheet.create({
   colorPicker: {
     width: 44,
     height: 44,
+    // The wheel is drawn centered in its box; pull it in line with the row's left edge.
+    marginLeft: -7,
   },
   progress: {
     alignSelf: 'stretch',
@@ -328,7 +330,8 @@ export function NativeButton({
   variant?: 'primary' | 'secondary' | 'link';
 }) {
   const inactive = Boolean(disabled || loading);
-  const style = variant === 'primary' ? 'borderedProminent' : variant === 'secondary' ? 'bordered' : 'borderless';
+  // Secondary is a native Liquid Glass button, so it stays legible over gradients.
+  const style = variant === 'primary' ? 'borderedProminent' : variant === 'secondary' ? 'glass' : 'borderless';
   return (
     <Host matchContents={{ vertical: true }} style={styles.buttonHost}>
       <Button
