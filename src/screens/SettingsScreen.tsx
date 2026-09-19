@@ -14,7 +14,7 @@ import { S, fonts, cardShadow, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/s
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
-import { NativeMenuPicker, NativeSecondaryButton, NativeShareButton, NativeToggle } from '@/components/NativeControls';
+import { NativeMenuPicker, NativeSecondaryButton, NativeShareButton, CONFIRM_ANCHOR_FILL, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
 
 const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : '—');
 
@@ -77,29 +77,49 @@ export default function SettingsScreen() {
     else haptic.success();
   };
 
+  // One dialog per control, anchored to the row (or button) that opens it.
+  const newCodeConfirm = useNativeConfirm(CONFIRM_ANCHOR_FILL);
+  const signOutConfirm = useNativeConfirm(CONFIRM_ANCHOR_FILL);
+  const leaveConfirm = useNativeConfirm(CONFIRM_ANCHOR_FILL);
+  const deleteConfirm = useNativeConfirm(CONFIRM_ANCHOR_FILL);
+  const cancelLabel = t('common.cancel');
+
   const confirmNewCode = () =>
-    Alert.alert(t('settings.newCodeTitle'), t('settings.newCodeMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('settings.newCode'), onPress: () => runAction('code', regenerateInviteCode) },
-    ]);
+    newCodeConfirm.confirm({
+      title: t('settings.newCodeTitle'),
+      message: t('settings.newCodeMessage'),
+      confirmLabel: t('settings.newCode'),
+      cancelLabel,
+      destructive: false,
+      onConfirm: () => runAction('code', regenerateInviteCode),
+    });
 
   const confirmSignOut = () =>
-    Alert.alert(t('settings.signOut'), t('settings.signOutMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('settings.signOut'), style: 'destructive', onPress: () => { haptic.warning(); void signOut(); } },
-    ]);
+    signOutConfirm.confirm({
+      title: t('settings.signOut'),
+      message: t('settings.signOutMessage'),
+      confirmLabel: t('settings.signOut'),
+      cancelLabel,
+      onConfirm: () => { haptic.warning(); void signOut(); },
+    });
 
   const confirmLeave = () =>
-    Alert.alert(t('settings.leave'), t('settings.leaveMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('settings.leave'), style: 'destructive', onPress: () => runAction('leave', leaveHousehold) },
-    ]);
+    leaveConfirm.confirm({
+      title: t('settings.leave'),
+      message: t('settings.leaveMessage'),
+      confirmLabel: t('settings.leave'),
+      cancelLabel,
+      onConfirm: () => runAction('leave', leaveHousehold),
+    });
 
   const confirmDelete = () =>
-    Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => runAction('delete', deleteAccount) },
-    ]);
+    deleteConfirm.confirm({
+      title: t('settings.deleteAccount'),
+      message: t('settings.deleteAccountMessage'),
+      confirmLabel: t('common.delete'),
+      cancelLabel,
+      onConfirm: () => runAction('delete', deleteAccount),
+    });
 
   return (
     // The title is the native large-title header (see TabNavigator). The ScrollView must be the
@@ -167,6 +187,7 @@ export default function SettingsScreen() {
                   message={t('settings.shareMessage', { code: formatCode(household?.inviteCode) })}
                 />
                 <NativeSecondaryButton label={t('settings.newCode')} onPress={busy != null ? () => {} : confirmNewCode} />
+                {newCodeConfirm.dialog}
               </View>
             </View>
           </>
@@ -214,11 +235,11 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Row label={t('settings.email')} value={email ?? '—'} />
         <Divider />
-        <Row label={t('settings.signOut')} onPress={confirmSignOut} />
+        <Row label={t('settings.signOut')} onPress={confirmSignOut} overlay={signOutConfirm.dialog} />
         <Divider />
-        <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
+        <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} overlay={leaveConfirm.dialog} />
         <Divider />
-        <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
+        <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last overlay={deleteConfirm.dialog} />
       </View>
 
       <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
@@ -237,6 +258,7 @@ function Row({
   danger,
   busy,
   last,
+  overlay,
 }: {
   label: string;
   value?: string;
@@ -245,6 +267,8 @@ function Row({
   danger?: boolean;
   busy?: boolean;
   last?: boolean;
+  /** Invisible native view rendered on top of the row (e.g. a confirmation dialog anchor). */
+  overlay?: React.ReactNode;
 }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [styles.row, pressed && onPress && { opacity: 0.6 }]}>
@@ -254,6 +278,7 @@ function Row({
         {right ?? null}
         {busy ? <ActivityIndicator color={S.muted} /> : onPress && !right ? <ChevronRight size={18} color={S.muted} strokeWidth={2.4} /> : null}
       </View>
+      {overlay}
     </Pressable>
   );
 }

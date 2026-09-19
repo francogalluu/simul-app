@@ -17,7 +17,7 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { NativeSegmented } from '@/components/NativeControls';
+import { NativeSegmented, useNativeConfirm } from '@/components/NativeControls';
 
 type Mode = 'single' | 'shared';
 
@@ -165,18 +165,18 @@ export default function AddHabitScreen() {
   };
 
   const isPendingInvite = editing?.status === 'pending';
+  const { confirm, dialog } = useNativeConfirm({ top: 4, right: 96 });
   const handleDelete = () => {
     if (!editing) return;
-    Alert.alert(
-      isPendingInvite ? 'Cancel invite?' : 'Delete habit?',
-      isPendingInvite
+    confirm({
+      title: isPendingInvite ? 'Cancel invite?' : 'Delete habit?',
+      message: isPendingInvite
         ? `${partnerName} won't see "${editing.name}" anymore.`
         : `"${editing.name}" and its history will be removed${editing.owner === 'both' ? ` for both you and ${partnerName}` : ''}.`,
-      [
-        { text: 'Keep', style: 'cancel' },
-        { text: isPendingInvite ? 'Cancel invite' : 'Delete', style: 'destructive', onPress: () => { haptic.warning(); removeHabit(editing.id); close(); } },
-      ],
-    );
+      confirmLabel: isPendingInvite ? 'Cancel invite' : 'Delete',
+      cancelLabel: 'Keep',
+      onConfirm: () => { haptic.warning(); removeHabit(editing.id); close(); },
+    });
   };
 
   // Only the owner can change a habit; both people can change a shared one (the server enforces this too).
@@ -303,6 +303,7 @@ export default function AddHabitScreen() {
             </ScrollView>
           </View>
         </ScrollView>
+        {dialog}
 
       </KeyboardAvoidingView>
     </SafeAreaView>

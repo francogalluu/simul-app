@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
-import { Button, ColorPicker, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Button, ColorPicker, ConfirmationDialog, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
 import { buttonStyle, controlSize, font, frame, gaugeStyle, labelsHidden, lineLimit, pickerStyle, scaleEffect, tag, tint } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
 
@@ -134,6 +134,13 @@ export function NativeColorPicker({ value, onChange }: { value: string; onChange
 }
 
 const styles = StyleSheet.create({
+  // The dialog is presented by the system; its host view is just an invisible anchor.
+  hiddenHost: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
   fill: {
     flex: 1,
   },
@@ -152,3 +159,65 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
 });
+
+// ─── Native confirmation dialog ───────────────────────────────────────────────
+
+type ConfirmOptions = {
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  /** Draws the confirm button in red. Default true. */
+  destructive?: boolean;
+  onConfirm: () => void;
+};
+
+/**
+ * Native iOS confirmation dialog (SwiftUI `confirmationDialog`, an action sheet).
+ * `const { confirm, dialog } = useNativeConfirm()`: render `{dialog}` once in the screen and call
+ * `confirm({...})` where an `Alert.alert` with a destructive button used to be.
+ * The system anchors the dialog to its host view, so pass `anchorStyle` (e.g. absolute-fill inside the
+ * row that triggers it) to make it appear next to that control.
+ */
+export function useNativeConfirm(anchorStyle?: StyleProp<ViewStyle>) {
+  const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  const [presented, setPresented] = useState(false);
+
+  const confirm = useCallback((next: ConfirmOptions) => {
+    setOptions(next);
+    setPresented(true);
+  }, []);
+
+  const dialog = options ? (
+    <Host style={[styles.hiddenHost, anchorStyle]} pointerEvents="none">
+      <ConfirmationDialog
+        title={options.title}
+        titleVisibility="visible"
+        isPresented={presented}
+        onIsPresentedChange={setPresented}
+      >
+        <ConfirmationDialog.Trigger>
+          <SwiftText>{' '}</SwiftText>
+        </ConfirmationDialog.Trigger>
+        <ConfirmationDialog.Actions>
+          <Button
+            label={options.confirmLabel}
+            role={options.destructive === false ? 'default' : 'destructive'}
+            onPress={options.onConfirm}
+          />
+          <Button label={options.cancelLabel ?? 'Cancel'} role="cancel" />
+        </ConfirmationDialog.Actions>
+        {options.message ? (
+          <ConfirmationDialog.Message>
+            <SwiftText>{options.message}</SwiftText>
+          </ConfirmationDialog.Message>
+        ) : null}
+      </ConfirmationDialog>
+    </Host>
+  ) : null;
+
+  return { confirm, dialog };
+}
+
+/** Anchor style: covers the whole parent view (which must be positioned) instead of a 1pt corner. */
+export const CONFIRM_ANCHOR_FILL: ViewStyle = { top: 0, left: 0, right: 0, bottom: 0, width: undefined, height: undefined };
