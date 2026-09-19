@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Button, ColorPicker, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
-import { buttonStyle, controlSize, font, frame, labelsHidden, lineLimit, pickerStyle, tag, tint } from '@expo/ui/swift-ui/modifiers';
+import { Button, ColorPicker, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
+import { buttonStyle, controlSize, font, frame, gaugeStyle, labelsHidden, lineLimit, pickerStyle, scaleEffect, tag, tint } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
 
 // Real SwiftUI controls (via @expo/ui), tinted with the app's greens.
@@ -77,6 +77,18 @@ export function NativeProgress({ value, color = S.accent }: { value: number; col
   return (
     <Host matchContents={{ vertical: true }} style={styles.progress} seedColor={color}>
       <ProgressView value={Math.min(1, Math.max(0, value))} />
+    </Host>
+  );
+}
+
+/** Native SwiftUI circular gauge ring (value 0..1). Put content on top of it from React Native. */
+export function NativeRing({ value, size = 30, color = S.gold }: { value: number; size?: number; color?: string }) {
+  return (
+    <Host style={{ width: size, height: size }} seedColor={color}>
+      <Gauge
+        value={Math.min(1, Math.max(0, value))}
+        modifiers={[gaugeStyle('circularCapacity'), tint(color), frame({ width: size, height: size }), scaleEffect(size / 60)]}
+      />
     </Host>
   );
 }

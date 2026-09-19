@@ -6,7 +6,8 @@ import { format } from 'date-fns';
 import { getDateLocale, getWeekDates, isFuture, today } from '@/lib/dates';
 import { usePeople } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
-import { summarizeDay } from '@/lib/streaks';
+import { streakProgress, summarizeDay } from '@/lib/streaks';
+import { NativeRing } from '@/components/NativeControls';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
 import type { WeekStartDay } from '@/store/settingsStore';
 import type { Completions, Habit } from '@/store/tasksStore';
@@ -66,7 +67,12 @@ export function CalendarCard({
           <Text style={styles.coupleName}>{people.A.name} &amp; {people.S.name}</Text>
         </View>
         <View style={styles.streakPill}>
-          <LightningIcon size={14} />
+          <View style={styles.streakRing}>
+            <NativeRing value={streakProgress(togetherStreak).progress} size={30} />
+            <View style={styles.streakBolt} pointerEvents="none">
+              <LightningIcon size={12} />
+            </View>
+          </View>
           <Text style={styles.streakText}>
             {togetherStreak} {togetherStreak === 1 ? 'Day' : 'Days'}
           </Text>
@@ -178,14 +184,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: S.ink900,
   },
+  streakRing: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakBolt: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   streakPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     backgroundColor: '#FFFFFF',
     borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingLeft: 7,
+    paddingRight: 12,
+    paddingVertical: 4,
     ...cardShadow,
   },
   streakText: {

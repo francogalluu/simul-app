@@ -98,3 +98,13 @@ export function countCompletions(completions: Completions, person?: Person): num
   }
   return n;
 }
+
+/** Streak lengths worth celebrating, in days. */
+export const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 200, 365];
+
+/** Progress (0..1) from the previous milestone to the next one, and that next milestone. */
+export function streakProgress(streak: number): { next: number; progress: number } {
+  const next = STREAK_MILESTONES.find((m) => streak < m) ?? STREAK_MILESTONES[STREAK_MILESTONES.length - 1];
+  const prev = [...STREAK_MILESTONES].reverse().find((m) => m <= streak) ?? 0;
+  return { next, progress: streak >= next ? 1 : (streak - prev) / (next - prev) };
+}
