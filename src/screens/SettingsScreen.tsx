@@ -255,9 +255,15 @@ function NativeMenuPicker<T extends string | number>({
   onChange: (next: T) => void;
   options: { value: T; label: string }[];
 }) {
+  // The native picker also reports its initial value when it mounts, which can overwrite a
+  // saved setting that hasn't finished loading yet, so only react to real changes.
   return (
     <Host matchContents={{ horizontal: true }} style={styles.nativeControl} seedColor={S.accentDeep}>
-      <Picker selection={value} onSelectionChange={onChange} modifiers={[pickerStyle('menu'), labelsHidden()]}>
+      <Picker
+        selection={value}
+        onSelectionChange={(next: T) => next !== value && onChange(next)}
+        modifiers={[pickerStyle('menu'), labelsHidden()]}
+      >
         {options.map((o) => (
           <SwiftText key={String(o.value)} modifiers={[tag(o.value)]}>
             {o.label}

@@ -86,13 +86,29 @@ export default function RootNavigator() {
           <Stack.Screen
             name="AddHabit"
             component={AddHabitScreen}
-            options={{
+            options={({ navigation, route }) => ({
+              // Native iOS sheet: the system draws the (Liquid Glass) sheet background, so the
+              // screen itself is transparent and the header is the native, translucent one.
               presentation: 'formSheet',
               sheetAllowedDetents: [0.78, 1],
               sheetInitialDetentIndex: 0,
               sheetGrabberVisible: true,
               sheetExpandsWhenScrolledToEdge: true,
-            }}
+              contentStyle: { backgroundColor: 'transparent' },
+              headerShown: true,
+              headerTransparent: true,
+              headerShadowVisible: false,
+              title: route.params?.habitId ? 'Edit Habit' : 'New Habit',
+              headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+              unstable_headerLeftItems: () => [
+                {
+                  type: 'button',
+                  label: 'Close',
+                  icon: { type: 'sfSymbol', name: 'xmark' },
+                  onPress: () => navigation.goBack(),
+                },
+              ],
+            })}
           />
           <Stack.Screen name="AddGoal" component={AddGoalScreen} options={{ presentation: 'modal' }} />
           <Stack.Screen name="Mailbox" component={MailboxScreen} />

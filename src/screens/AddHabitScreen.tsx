@@ -18,7 +18,7 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 type Mode = 'single' | 'shared';
 
@@ -114,6 +114,7 @@ function PeopleIcon({ color }: { color: string }) {
 
 export default function AddHabitScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const headerHeight = useHeaderHeight();
   const route = useRoute<RouteProp<RootStackParamList, 'AddHabit'>>();
   const habitId = route.params?.habitId;
   const { width: screenWidth } = useWindowDimensions();
@@ -185,63 +186,74 @@ export default function AddHabitScreen() {
     close();
   };
 
+  const isPendingInvite = editing?.status === 'pending';
   const handleDelete = () => {
     if (!editing) return;
-    Alert.alert('Delete habit?', `"${editing.name}" and its history will be removed.`, [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { haptic.warning(); removeHabit(editing.id); close(); } },
-    ]);
+    Alert.alert(
+      isPendingInvite ? 'Cancel invite?' : 'Delete habit?',
+      isPendingInvite
+        ? `${partnerName} won't see "${editing.name}" anymore.`
+        : `"${editing.name}" and its history will be removed${editing.owner === 'both' ? ` for both you and ${partnerName}` : ''}.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        { text: isPendingInvite ? 'Cancel invite' : 'Delete', style: 'destructive', onPress: () => { haptic.warning(); removeHabit(editing.id); close(); } },
+      ],
+    );
   };
 
-  return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScreenHeader title={isEdit ? 'Edit Habit' : 'New Habit'} variant="close" />
+  // Only the owner can change a habit; both people can change a shared one (the server enforces this too).
+  const canManage = !editing || editing.owner === 'both' || editing.owner === me;
+  useEffect(() => {
+    if (!canManage) navigation.goBack();
+  }, [canManage, navigation]);
 
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {/* Who */}
-          <Text style={s.sectionLabel}>Who is this for</Text>
-          {isEdit ? (
-            <View style={s.staticWho}>
-              {mode === 'shared' ? <PeopleIcon color={S.ink900} /> : <PersonIcon color={S.ink900} />}
-              <Text style={s.staticWhoText}>{mode === 'shared' ? `Together with ${partnerName}` : 'Just you'}</Text>
-              <Text style={s.staticWhoHint}>Can't be changed</Text>
-            </View>
-          ) : (
-            <View style={s.modeRow}>
-              <Pressable onPress={() => { haptic.tap(); setMode('single'); }} style={[s.modeOption, mode === 'single' && s.modeOptionActive]}>
-                <PersonIcon color={mode === 'single' ? '#FFFFFF' : S.ink900} />
-                <Text style={[s.modeLabel, mode === 'single' && s.modeLabelActive]}>Just me</Text>
-              </Pressable>
-              <Pressable onPress={() => { haptic.tap(); setMode('shared'); }} style={[s.modeOption, mode === 'shared' && s.modeOptionActive]}>
-                <PeopleIcon color={mode === 'shared' ? '#FFFFFF' : S.ink900} />
-                <Text style={[s.modeLabel, mode === 'shared' && s.modeLabelActive]}>With {partnerName}</Text>
-              </Pressable>
-            </View>
+  return (
+    <SafeAreaView style={s.safe} edges={['bottom']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={[s.scroll, { paddingTop: headerHeight }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {/* Who (new habits only: the owner of an existing habit can't change) */}
+          {!isEdit && (
+            <>
+              <Text style={s.sectionLabel}>Who is this for</Text>
+              <View style={s.modeRow}>
+                <Pressable onPress={() => { haptic.tap(); setMode('single'); }} style={[s.modeOption, mode === 'single' && s.modeOptionActive]}>
+                  <PersonIcon color={mode === 'single' ? '#FFFFFF' : S.ink900} />
+                  <Text style={[s.modeLabel, mode === 'single' && s.modeLabelActive]}>Just me</Text>
+                </Pressable>
+                <Pressable onPress={() => { haptic.tap(); setMode('shared'); }} style={[s.modeOption, mode === 'shared' && s.modeOptionActive]}>
+                  <PeopleIcon color={mode === 'shared' ? '#FFFFFF' : S.ink900} />
+                  <Text style={[s.modeLabel, mode === 'shared' && s.modeLabelActive]}>With {partnerName}</Text>
+                </Pressable>
+              </View>
+            </>
           )}
 
-          {/* Quick pick */}
-          <Text style={s.sectionLabel}>Quick pick</Text>
-          <View style={s.carouselBleed}>
-            <Animated.FlatList
-              ref={carouselRef}
-              data={LOOPED}
-              horizontal
-              keyExtractor={(item, index) => `${item.label}-${index}`}
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={SNAP}
-              decelerationRate="fast"
-              disableIntervalMomentum
-              onScroll={onCarouselScroll}
-              scrollEventThrottle={16}
-              initialScrollIndex={MIDDLE_START}
-              getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}
-              contentContainerStyle={{ paddingHorizontal: Math.max((screenWidth - ITEM_WIDTH) / 2, SCREEN_PADDING) }}
-              renderItem={({ item, index }) => (
-                <PresetCard item={item} index={index} scrollX={scrollX} selected={name === item.label} onPress={() => handlePreset(item, index)} />
-              )}
-            />
-          </View>
+          {/* Quick pick (new habits only) */}
+          {!isEdit && (
+            <>
+              <Text style={s.sectionLabel}>Quick pick</Text>
+              <View style={s.carouselBleed}>
+                <Animated.FlatList
+                  ref={carouselRef}
+                  data={LOOPED}
+                  horizontal
+                  keyExtractor={(item, index) => `${item.label}-${index}`}
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={SNAP}
+                  decelerationRate="fast"
+                  disableIntervalMomentum
+                  onScroll={onCarouselScroll}
+                  scrollEventThrottle={16}
+                  initialScrollIndex={MIDDLE_START}
+                  getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}
+                  contentContainerStyle={{ paddingHorizontal: Math.max((screenWidth - ITEM_WIDTH) / 2, SCREEN_PADDING) }}
+                  renderItem={({ item, index }) => (
+                    <PresetCard item={item} index={index} scrollX={scrollX} selected={name === item.label} onPress={() => handlePreset(item, index)} />
+                  )}
+                />
+              </View>
+            </>
+          )}
 
           {/* Details */}
           <Text style={s.sectionLabel}>Details</Text>
@@ -301,7 +313,7 @@ export default function AddHabitScreen() {
 
           {isEdit && (
             <Pressable onPress={handleDelete} style={({ pressed }) => [s.deleteLink, pressed && { opacity: 0.6 }]}>
-              <Text style={s.deleteLinkText}>Delete habit</Text>
+              <Text style={s.deleteLinkText}>{isPendingInvite ? 'Cancel invite' : 'Delete habit'}</Text>
             </Pressable>
           )}
         </ScrollView>
@@ -325,7 +337,6 @@ export default function AddHabitScreen() {
 const s = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: S.bg,
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
@@ -363,26 +374,6 @@ const s = StyleSheet.create({
   },
   modeLabelActive: {
     color: '#FFFFFF',
-  },
-  staticWho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: S.card,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    ...cardShadow,
-  },
-  staticWhoText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: S.ink900,
-  },
-  staticWhoHint: {
-    fontSize: 12,
-    color: S.muted,
   },
   carouselBleed: {
     marginHorizontal: -SCREEN_PADDING,
@@ -512,13 +503,15 @@ const s = StyleSheet.create({
     color: S.ink500,
   },
   deleteLink: {
-    alignSelf: 'center',
-    marginTop: 22,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    marginTop: 18,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: S.dangerSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteLinkText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: S.danger,
   },

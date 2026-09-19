@@ -59,7 +59,6 @@ export default function HomeScreen() {
   const completions = useTasksStore((s) => s.completions);
   useHabitsWidgetSync(me, habits, completions);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
-  const removeHabit = useTasksStore((s) => s.removeHabit);
 
   const [selectedDate, setSelectedDate] = useState(today);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
@@ -214,10 +213,9 @@ export default function HomeScreen() {
               completions={completions}
               celebratingId={celebratingId}
               onToggle={handleToggle}
-              onEdit={(h) => navigation.navigate('AddHabit', { habitId: h.id })}
-              onDelete={(h) => {
-                haptic.warning();
-                removeHabit(h.id);
+              onEdit={(h) => {
+                haptic.medium();
+                navigation.navigate('AddHabit', { habitId: h.id });
               }}
               onAddHabit={() => navigation.navigate('AddHabit')}
             />

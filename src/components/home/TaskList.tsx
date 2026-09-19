@@ -9,7 +9,6 @@ import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit } from '@/store/tasksStore';
 import { EmptyState } from '@/components/EmptyState';
-import { HabitContextMenu } from '@/components/home/HabitContextMenu';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +66,6 @@ export function TaskList({
   celebratingId,
   onToggle,
   onEdit,
-  onDelete,
   onAddHabit,
 }: {
   me: Person;
@@ -78,7 +76,6 @@ export function TaskList({
   celebratingId: string | null;
   onToggle: (habit: Habit) => void;
   onEdit: (habit: Habit) => void;
-  onDelete: (habit: Habit) => void;
   onAddHabit: () => void;
 }) {
   const partner = partnerOf(me);
@@ -130,16 +127,17 @@ export function TaskList({
             </View>
             <View style={styles.sectionCard}>
               {section.items.map((habit) => (
-                <HabitContextMenu key={habit.id} habit={habit} me={me} onEdit={onEdit} onDelete={onDelete}>
-                  <TaskRow
-                    habit={habit}
-                    me={me}
-                    state={rowState(habit, completions, date, me)}
-                    readOnly={readOnly}
-                    celebrating={celebratingId === habit.id}
-                    onToggle={() => onToggle(habit)}
-                  />
-                </HabitContextMenu>
+                <TaskRow
+                  key={habit.id}
+                  habit={habit}
+                  me={me}
+                  state={rowState(habit, completions, date, me)}
+                  readOnly={readOnly}
+                  celebrating={celebratingId === habit.id}
+                  onToggle={() => onToggle(habit)}
+                  // Only the owner can edit a habit; either person can edit a shared one.
+                  onLongPress={habit.owner === 'both' || habit.owner === me ? () => onEdit(habit) : undefined}
+                />
               ))}
             </View>
           </View>
@@ -158,6 +156,7 @@ function TaskRow({
   readOnly,
   celebrating,
   onToggle,
+  onLongPress,
 }: {
   habit: Habit;
   me: Person;
@@ -165,6 +164,7 @@ function TaskRow({
   readOnly: boolean;
   celebrating: boolean;
   onToggle: () => void;
+  onLongPress?: () => void;
 }) {
   const partner = partnerOf(me);
   const partnerName = usePeople()[partner].name;
@@ -242,6 +242,8 @@ function TaskRow({
   return (
     <Pressable
       onPress={canToggle ? onToggle : undefined}
+      onLongPress={onLongPress}
+      delayLongPress={320}
       style={({ pressed }) => [styles.row, dimmed && styles.rowDimmed, pressed && canToggle && styles.rowPressed]}
     >
       <View style={styles.iconWrap}>
