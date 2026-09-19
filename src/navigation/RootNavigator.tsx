@@ -32,8 +32,6 @@ const nativeLargeTitle = (title: string) => ({
   headerBackButtonDisplayMode: 'minimal' as const,
   headerTintColor: S.ink900,
   headerShadowVisible: false,
-  headerStyle: { backgroundColor: S.bg },
-  headerLargeStyle: { backgroundColor: S.bg },
   headerLargeTitleEnabled: true,
   headerLargeTitleShadowVisible: false,
   headerLargeTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
