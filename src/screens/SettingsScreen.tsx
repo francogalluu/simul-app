@@ -11,7 +11,7 @@ import { i18n } from '@/i18n';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
-import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
+import { S, fonts, cardShadow, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/simulTheme';
 import { Avatar } from '@/components/Avatar';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 32,
+    paddingBottom: TAB_BAR_CLEARANCE,
   },
   title: {
     fontFamily: fonts.bold,

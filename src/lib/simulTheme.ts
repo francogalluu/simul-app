@@ -56,3 +56,5 @@ export const softShadow = {
 } as const;
 
 export const SCREEN_PADDING = 22;
+// The native tab bar floats over the screen, so scrollable content needs this much room at the bottom.
+export const TAB_BAR_CLEARANCE = 120;

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Gesture,
   GestureDetector,
@@ -26,7 +27,7 @@ import { addDays, getWeekDates, isFuture, today } from '@/lib/dates';
 import { partnerOf, useMe } from '@/lib/people';
 import { togetherStreak } from '@/lib/streaks';
 import { haptic } from '@/lib/haptics';
-import { S, SCREEN_PADDING } from '@/lib/simulTheme';
+import { S, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/simulTheme';
 import { HomeTopBar } from '@/components/home/HomeTopBar';
 import { CalendarCard } from '@/components/home/CalendarCard';
 import { TaskList } from '@/components/home/TaskList';
@@ -177,7 +178,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <PullRefreshIndicator refreshing={refreshing} pullDistance={pullDistance} />
       <AnimatedScrollView
         showsVerticalScrollIndicator={false}
@@ -246,6 +247,6 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 28,
+    paddingBottom: TAB_BAR_CLEARANCE,
   },
 });
