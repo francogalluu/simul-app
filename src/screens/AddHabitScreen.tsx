@@ -211,8 +211,9 @@ export default function AddHabitScreen() {
           type: 'button' as const,
           label: isEdit ? 'Save changes' : mode === 'shared' ? `Invite ${partnerName}` : 'Add habit',
           icon: { type: 'sfSymbol' as const, name: 'checkmark' as const },
-          variant: 'prominent' as const,
-          tintColor: S.accent,
+          // Plain (not prominent) so it sits inside the same glass capsule as stats and trash.
+          variant: 'plain' as const,
+          tintColor: S.accentDeep,
           disabled: !canSubmit,
           onPress: handleSubmit,
         },

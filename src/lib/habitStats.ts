@@ -30,6 +30,8 @@ export interface HabitStats {
   rate: number | null;
   /** The last `days` days, oldest first. */
   days: HabitDay[];
+  /** Completion rate over the trailing 7 days for each of `days` (0..1): a smooth line to plot. */
+  trend: number[];
 }
 
 export function computeHabitStats(habit: Habit, completions: Completions, days = 30): HabitStats {
@@ -61,5 +63,12 @@ export function computeHabitStats(habit: Habit, completions: Completions, days =
   const existed = window.filter((d) => !d.beforeStart);
   const rate = existed.length ? existed.filter((d) => d.done).length / existed.length : null;
 
-  return { currentStreak, bestStreak: best, totalDone: total, rate, days: window };
+  // Trailing 7-day completion rate for each day in the window (only counting days the habit existed).
+  const offset = all.length - window.length;
+  const trend = window.map((_, i) => {
+    const slice = all.slice(Math.max(0, offset + i - 6), offset + i + 1).filter((d) => !d.beforeStart);
+    return slice.length ? slice.filter((d) => d.done).length / slice.length : 0;
+  });
+
+  return { currentStreak, bestStreak: best, totalDone: total, rate, days: window, trend };
 }

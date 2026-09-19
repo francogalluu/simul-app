@@ -134,7 +134,7 @@ export default function RootNavigator() {
             options={({ navigation }) => ({
               // Native sheet on top of the edit sheet, with the same flat background.
               presentation: 'formSheet',
-              sheetAllowedDetents: [0.86, 1],
+              sheetAllowedDetents: [0.66, 1],
               sheetInitialDetentIndex: 0,
               sheetGrabberVisible: true,
               contentStyle: { backgroundColor: S.bg },
