@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Host, Picker, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
+import { Host, Picker, ProgressView, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
 import { labelsHidden, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
 
@@ -72,7 +72,19 @@ export function NativeSegmented<T extends string | number>({
   );
 }
 
+/** Native SwiftUI linear progress bar (value 0..1), tinted with `color`. */
+export function NativeProgress({ value, color = S.accent }: { value: number; color?: string }) {
+  return (
+    <Host matchContents={{ vertical: true }} style={styles.progress} seedColor={color}>
+      <ProgressView value={Math.min(1, Math.max(0, value))} />
+    </Host>
+  );
+}
+
 const styles = StyleSheet.create({
+  progress: {
+    alignSelf: 'stretch',
+  },
   // Fixed height so a SwiftUI control is centered in a row like the RN labels are.
   control: {
     height: 34,

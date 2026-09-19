@@ -12,6 +12,7 @@ export type RootStackParamList = {
   AddGoal: { goalId?: string } | undefined;
   Mailbox: undefined;
   Achievements: undefined;
+  AchievementDetail: { id: string };
 };
 
 // ─── Bottom tab navigator ─────────────────────────────────────────────────────

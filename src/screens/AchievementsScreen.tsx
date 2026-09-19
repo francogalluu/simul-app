@@ -1,8 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { View, Pressable, ScrollView, StyleSheet, Modal } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '@/navigation/types';
+import { NativeProgress } from '@/components/NativeControls';
 import { useMe } from '@/lib/people';
 import { computeAchievements, type Achievement } from '@/lib/achievements';
 import { haptic } from '@/lib/haptics';
@@ -13,7 +17,7 @@ export default function AchievementsScreen() {
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
   const goals = useGoalsStore((s) => s.goals);
-  const [selected, setSelected] = useState<Achievement | null>(null);
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const achievements = useMemo(() => computeAchievements(habits, completions, goals, me), [habits, completions, goals, me]);
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
@@ -39,48 +43,17 @@ export default function AchievementsScreen() {
               ? 'Complete your first habit to earn one. Some badges stay hidden until you find them.'
               : `${achievements.length - unlockedCount} to go. A few are secret — keep going to reveal them.`}
           </Text>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.max(pct * 100, unlockedCount ? 6 : 0)}%` }]} />
+          <View style={{ marginTop: 14 }}>
+            <NativeProgress value={pct} color={S.gold} />
           </View>
         </View>
 
         <View style={styles.grid}>
           {achievements.map((a) => (
-            <Badge key={a.id} achievement={a} onPress={() => { haptic.tap(); setSelected(a); }} />
+            <Badge key={a.id} achievement={a} onPress={() => { haptic.tap(); navigation.navigate('AchievementDetail', { id: a.id }); }} />
           ))}
         </View>
       </ScrollView>
-
-      <Modal visible={selected !== null} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
-        <View style={styles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelected(null)} />
-          {selected && (
-            <View style={styles.detail}>
-              <View style={[styles.detailIconWrap, selected.unlocked ? styles.detailIconUnlocked : selected.secret ? styles.detailIconSecret : styles.detailIconLocked]}>
-                <Text style={[styles.detailIcon, !selected.unlocked && !selected.secret && { opacity: 0.35 }]}>
-                  {selected.secret && !selected.unlocked ? '?' : selected.icon}
-                </Text>
-              </View>
-              <Text style={styles.detailTitle}>{selected.secret && !selected.unlocked ? 'Secret badge' : selected.title}</Text>
-              <Text style={styles.detailBody}>
-                {selected.secret && !selected.unlocked ? 'Keep going to reveal this one.' : selected.description}
-              </Text>
-              {selected.progress && !selected.unlocked && (
-                <View style={{ width: '100%', marginTop: 16 }}>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${(selected.progress.current / selected.progress.target) * 100}%` }]} />
-                  </View>
-                  <Text style={styles.detailProgress}>{selected.progress.current} / {selected.progress.target}</Text>
-                </View>
-              )}
-              {selected.unlocked && <Text style={styles.detailUnlocked}>Unlocked ✓</Text>}
-              <Pressable onPress={() => setSelected(null)} style={({ pressed }) => [styles.detailClose, pressed && { opacity: 0.7 }]}>
-                <Text style={styles.detailCloseText}>Close</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      </Modal>
     </>
   );
 }
@@ -141,18 +114,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: S.ink500,
   },
-  progressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: S.lineSoft,
-    marginTop: 14,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: S.gold,
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -210,82 +171,5 @@ const styles = StyleSheet.create({
   lockText: {
     fontSize: 11,
     opacity: 0.6,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(20, 18, 16, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-  },
-  detail: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: S.card,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-  },
-  detailIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  detailIconUnlocked: {
-    backgroundColor: S.goldSoft,
-    borderWidth: 3,
-    borderColor: S.gold,
-  },
-  detailIconLocked: {
-    backgroundColor: S.bg,
-  },
-  detailIconSecret: {
-    backgroundColor: S.black,
-  },
-  detailIcon: {
-    fontSize: 42,
-    fontFamily: fonts.bold,
-    color: '#FFFFFF',
-  },
-  detailTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    color: S.ink900,
-    textAlign: 'center',
-  },
-  detailBody: {
-    marginTop: 6,
-    fontSize: 14,
-    lineHeight: 20,
-    color: S.ink500,
-    textAlign: 'center',
-  },
-  detailProgress: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '700',
-    color: S.tertiary,
-    textAlign: 'center',
-  },
-  detailUnlocked: {
-    marginTop: 12,
-    fontSize: 13,
-    fontWeight: '800',
-    color: S.accentDeep,
-  },
-  detailClose: {
-    marginTop: 18,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: S.bg,
-  },
-  detailCloseText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: S.ink700,
   },
 });

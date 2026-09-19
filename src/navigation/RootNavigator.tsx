@@ -10,6 +10,7 @@ import AddHabitScreen from '@/screens/AddHabitScreen';
 import AddGoalScreen from '@/screens/AddGoalScreen';
 import MailboxScreen from '@/screens/MailboxScreen';
 import AchievementsScreen from '@/screens/AchievementsScreen';
+import AchievementDetailScreen from '@/screens/AchievementDetailScreen';
 import AuthScreen from '@/screens/AuthScreen';
 import OnboardingScreen from '@/screens/OnboardingScreen';
 import NotificationsPromptScreen from '@/screens/NotificationsPromptScreen';
@@ -129,6 +130,24 @@ export default function RootNavigator() {
           <Stack.Screen name="AddGoal" component={AddGoalScreen} options={{ presentation: 'modal' }} />
           <Stack.Screen name="Mailbox" component={MailboxScreen} options={nativeLargeTitle('Mailbox')} />
           <Stack.Screen name="Achievements" component={AchievementsScreen} options={nativeLargeTitle('Achievements')} />
+          <Stack.Screen
+            name="AchievementDetail"
+            component={AchievementDetailScreen}
+            options={({ navigation }) => ({
+              // Native sheet sized to the badge: a small detent, expandable.
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.36],
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: S.bg },
+              headerShown: true,
+              headerStyle: { backgroundColor: S.bg },
+              headerShadowVisible: false,
+              title: '',
+              unstable_headerLeftItems: () => [
+                { type: 'button', label: 'Close', icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
+              ],
+            })}
+          />
         </>
       )}
     </Stack.Navigator>
