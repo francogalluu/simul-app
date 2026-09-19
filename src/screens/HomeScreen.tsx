@@ -28,10 +28,10 @@ import { partnerOf, useMe } from '@/lib/people';
 import { togetherStreak } from '@/lib/streaks';
 import { haptic } from '@/lib/haptics';
 import { S, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/simulTheme';
+import { useHabitsWidgetSync } from '@/widgets/useHabitsWidgetSync';
 import { HomeTopBar } from '@/components/home/HomeTopBar';
 import { CalendarCard } from '@/components/home/CalendarCard';
 import { TaskList } from '@/components/home/TaskList';
-import { HabitActionSheet } from '@/components/home/HabitActionSheet';
 import { PullRefreshIndicator } from '@/components/home/PullRefreshIndicator';
 
 /** Native spinner is hidden (see RefreshControl below) in favor of PullRefreshIndicator. */
@@ -57,11 +57,11 @@ export default function HomeScreen() {
   const weekStartsOn = useSettingsStore((s) => s.weekStartsOn);
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
+  useHabitsWidgetSync(me, habits, completions);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
   const removeHabit = useTasksStore((s) => s.removeHabit);
 
   const [selectedDate, setSelectedDate] = useState(today);
-  const [sheetHabit, setSheetHabit] = useState<Habit | null>(null);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -153,11 +153,6 @@ export default function HomeScreen() {
     [readOnly, toggleCompletion, selectedDate, me],
   );
 
-  const openSheet = useCallback((habit: Habit) => {
-    haptic.medium();
-    setSheetHabit(habit);
-  }, []);
-
   // ─── Pull to refresh ────────────────────────────────────────────────────────
   // How far past the top the scroll view has been dragged (iOS reports this
   // live via a negative offset while bouncing; Android never goes negative,
@@ -219,23 +214,17 @@ export default function HomeScreen() {
               completions={completions}
               celebratingId={celebratingId}
               onToggle={handleToggle}
-              onLongPress={openSheet}
+              onEdit={(h) => navigation.navigate('AddHabit', { habitId: h.id })}
+              onDelete={(h) => {
+                haptic.warning();
+                removeHabit(h.id);
+              }}
               onAddHabit={() => navigation.navigate('AddHabit')}
             />
           </Animated.View>
         </GestureDetector>
       </AnimatedScrollView>
 
-      <HabitActionSheet
-        habit={sheetHabit}
-        me={me}
-        onClose={() => setSheetHabit(null)}
-        onEdit={(h) => navigation.navigate('AddHabit', { habitId: h.id })}
-        onDelete={(h) => {
-          haptic.warning();
-          removeHabit(h.id);
-        }}
-      />
     </SafeAreaView>
   );
 }

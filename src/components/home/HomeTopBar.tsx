@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import Svg, { Path } from 'react-native-svg';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
 
 export function LightningIcon({ size = 18, color = S.gold }: { size?: number; color?: string }) {
@@ -51,6 +52,34 @@ function MedalIcon({ size = 24 }: { size?: number }) {
   );
 }
 
+// Real Liquid Glass where the OS has it (iOS 26+), the old white circle everywhere else.
+const HAS_GLASS = isLiquidGlassAvailable();
+
+function GlassIconButton({
+  label,
+  onPress,
+  badge,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+      <GlassView
+        glassEffectStyle="regular"
+        isInteractive
+        style={[styles.iconButton, !HAS_GLASS && styles.iconButtonFallback]}
+      >
+        {children}
+      </GlassView>
+      {badge}
+    </Pressable>
+  );
+}
+
 export function HomeTopBar({
   unreadCount,
   onMailbox,
@@ -64,17 +93,22 @@ export function HomeTopBar({
     <View style={styles.row}>
       <Text style={styles.brand}>Simul</Text>
       <View style={styles.right}>
-        <Pressable accessibilityLabel="Mailbox" onPress={onMailbox} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+        <GlassIconButton
+          label="Mailbox"
+          onPress={onMailbox}
+          badge={
+            unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            ) : null
+          }
+        >
           <MailboxIcon size={24} />
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable accessibilityLabel="Achievements" onPress={onAchievements} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+        </GlassIconButton>
+        <GlassIconButton label="Achievements" onPress={onAchievements}>
           <MedalIcon size={24} />
-        </Pressable>
+        </GlassIconButton>
       </View>
     </View>
   );
@@ -103,9 +137,11 @@ const styles = StyleSheet.create({
     width: 47,
     height: 47,
     borderRadius: 23.5,
-    backgroundColor: S.card,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconButtonFallback: {
+    backgroundColor: S.card,
     ...cardShadow,
   },
   pressed: {

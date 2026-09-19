@@ -49,7 +49,23 @@
       "expo-splash-screen",
       "expo-status-bar",
       "expo-secure-store",
-      "./plugins/withUIScene"
+      "./plugins/withUIScene",
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "SimulHabits",
+              "displayName": "Simul",
+              "description": "Tus hábitos de hoy",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            }
+          ]
+        }
+      ]
     ],
     "owner": "franco-galluzzo"
   }

@@ -4,7 +4,7 @@ import type { NavigationProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList, TabParamList } from './types';
-import { S } from '@/lib/simulTheme';
+import { S, fonts } from '@/lib/simulTheme';
 import { haptic } from '@/lib/haptics';
 
 import HomeScreen from '@/screens/HomeScreen';
@@ -58,6 +58,16 @@ export default function TabNavigator() {
         options={{
           tabBarLabel: t('tabs.settings'),
           tabBarIcon: ({ focused }) => ({ type: 'sfSymbol', name: focused ? 'gearshape.fill' : 'gearshape' }),
+          // Native large-title header that collapses as the settings scroll.
+          headerShown: true,
+          title: t('settings.title'),
+          headerLargeTitleEnabled: true,
+          headerStyle: { backgroundColor: S.bg },
+          headerShadowVisible: false,
+          headerLargeStyle: { backgroundColor: S.bg },
+          headerLargeTitleShadowVisible: false,
+          headerLargeTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+          headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
         }}
         listeners={{ tabPress: tap }}
       />

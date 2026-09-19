@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Switch, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
+import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, Share, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/AppText';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { Host, Picker, Text as SwiftText, Toggle } from '@expo/ui/swift-ui';
+import { labelsHidden, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
@@ -43,19 +44,10 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState<null | 'code' | 'leave' | 'delete'>(null);
   useEffect(() => setNameDraft(people[me].name), [people, me]);
 
-  const pickWeekStart = () =>
-    Alert.alert(t('alerts.weekStartsOn'), undefined, [
-      { text: t('settings.sunday'), onPress: () => setWeekStartsOn(0) },
-      { text: t('settings.monday'), onPress: () => setWeekStartsOn(1) },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
-
-  const pickLanguage = () =>
-    Alert.alert(t('settings.language'), undefined, [
-      { text: t('settings.english'), onPress: () => { setLanguage('en'); i18n.changeLanguage('en'); } },
-      { text: t('settings.spanish'), onPress: () => { setLanguage('es'); i18n.changeLanguage('es'); } },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
+  const changeLanguage = (next: 'en' | 'es') => {
+    setLanguage(next);
+    i18n.changeLanguage(next);
+  };
 
   const saveName = async () => {
     const next = cleanName(nameDraft);
@@ -117,108 +109,162 @@ export default function SettingsScreen() {
     ]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t('settings.title')}</Text>
-
-        <Text style={styles.sectionLabel}>{t('settings.profile')}</Text>
-        <View style={[styles.card, styles.profileCard]}>
-          {userId && (
-            <AvatarPicker
-              userId={userId}
-              value={{ path: myAvatarPath, url: people[me].avatarUrl }}
-              color={people[me].color}
-              initial={people[me].initial}
-              size={72}
-              onChange={changeAvatar}
-            />
-          )}
-          <ColorPicker value={people[me].color} onChange={changeColor} />
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('settings.household')}</Text>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.personLeft}>
-              <Avatar person={me} size={34} />
-              <Text style={styles.rowLabel}>{t('settings.yourName')}</Text>
-            </View>
-            <TextInput
-              value={nameDraft}
-              onChangeText={setNameDraft}
-              onEndEditing={saveName}
-              onSubmitEditing={saveName}
-              maxLength={MAX_NAME_LENGTH}
-              returnKeyType="done"
-              style={styles.nameInput}
-              accessibilityLabel={t('settings.yourName')}
-            />
-          </View>
-          <Divider />
-          <View style={styles.row}>
-            <View style={styles.personLeft}>
-              <Avatar person={partnerOf(me)} size={34} />
-              <Text style={styles.rowLabel}>{t('settings.partner')}</Text>
-            </View>
-            <Text style={styles.rowValue}>{partner.joined ? partner.name : t('settings.partnerNotJoined')}</Text>
-          </View>
-
-          {!partner.joined && (
-            <>
-              <Divider />
-              <View style={styles.inviteBlock}>
-                <Text style={styles.rowLabel}>{t('settings.inviteCode')}</Text>
-                <Text selectable style={styles.code}>{formatCode(household?.inviteCode)}</Text>
-                <Text style={styles.hint}>{t('settings.codeHint')}</Text>
-                <View style={styles.inviteActions}>
-                  <Pressable onPress={shareCode} style={({ pressed }) => [styles.pillButton, styles.pillPrimary, pressed && { opacity: 0.8 }]}>
-                    <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{t('settings.shareCode')}</Text>
-                  </Pressable>
-                  <Pressable onPress={confirmNewCode} disabled={busy != null} style={({ pressed }) => [styles.pillButton, pressed && { opacity: 0.8 }]}>
-                    {busy === 'code' ? <ActivityIndicator color={S.accentDeep} /> : <Text style={styles.pillText}>{t('settings.newCode')}</Text>}
-                  </Pressable>
-                </View>
-              </View>
-            </>
-          )}
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('settings.preferences')}</Text>
-        <View style={styles.card}>
-          <Row label={t('settings.language')} value={language === 'es' ? t('settings.spanish') : t('settings.english')} onPress={pickLanguage} />
-          <Divider />
-          <Row
-            label={t('settings.hapticFeedback')}
-            right={
-              <Switch
-                value={hapticFeedback}
-                onValueChange={setHapticFeedback}
-                trackColor={{ false: S.line, true: S.accent }}
-                thumbColor="#FFFFFF"
-              />
-            }
+    // The title is the native large-title header (see TabNavigator). The ScrollView must be the
+    // screen's direct child so the header can collapse as it scrolls and handle the top inset.
+    <ScrollView
+      style={styles.safe}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.sectionLabel}>{t('settings.profile')}</Text>
+      <View style={[styles.card, styles.profileCard]}>
+        {userId && (
+          <AvatarPicker
+            userId={userId}
+            value={{ path: myAvatarPath, url: people[me].avatarUrl }}
+            color={people[me].color}
+            initial={people[me].initial}
+            size={72}
+            onChange={changeAvatar}
           />
-          <Divider />
-          <Row label={t('settings.weekStartsOn')} value={weekStartsOn === 0 ? t('settings.sunday') : t('settings.monday')} onPress={pickWeekStart} last />
+        )}
+        <ColorPicker value={people[me].color} onChange={changeColor} />
+      </View>
+
+      <Text style={styles.sectionLabel}>{t('settings.household')}</Text>
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.personLeft}>
+            <Avatar person={me} size={34} />
+            <Text style={styles.rowLabel}>{t('settings.yourName')}</Text>
+          </View>
+          <TextInput
+            value={nameDraft}
+            onChangeText={setNameDraft}
+            onEndEditing={saveName}
+            onSubmitEditing={saveName}
+            maxLength={MAX_NAME_LENGTH}
+            returnKeyType="done"
+            style={styles.nameInput}
+            accessibilityLabel={t('settings.yourName')}
+          />
+        </View>
+        <Divider />
+        <View style={styles.row}>
+          <View style={styles.personLeft}>
+            <Avatar person={partnerOf(me)} size={34} />
+            <Text style={styles.rowLabel}>{t('settings.partner')}</Text>
+          </View>
+          <Text style={styles.rowValue}>{partner.joined ? partner.name : t('settings.partnerNotJoined')}</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>{t('settings.account')}</Text>
-        <View style={styles.card}>
-          <Row label={t('settings.email')} value={email ?? '—'} />
-          <Divider />
-          <Row label={t('settings.signOut')} onPress={confirmSignOut} />
-          <Divider />
-          <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
-          <Divider />
-          <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
-        </View>
+        {!partner.joined && (
+          <>
+            <Divider />
+            <View style={styles.inviteBlock}>
+              <Text style={styles.rowLabel}>{t('settings.inviteCode')}</Text>
+              <Text selectable style={styles.code}>{formatCode(household?.inviteCode)}</Text>
+              <Text style={styles.hint}>{t('settings.codeHint')}</Text>
+              <View style={styles.inviteActions}>
+                <Pressable onPress={shareCode} style={({ pressed }) => [styles.pillButton, styles.pillPrimary, pressed && { opacity: 0.8 }]}>
+                  <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{t('settings.shareCode')}</Text>
+                </Pressable>
+                <Pressable onPress={confirmNewCode} disabled={busy != null} style={({ pressed }) => [styles.pillButton, pressed && { opacity: 0.8 }]}>
+                  {busy === 'code' ? <ActivityIndicator color={S.accentDeep} /> : <Text style={styles.pillText}>{t('settings.newCode')}</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
 
-        <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
-        <View style={styles.card}>
-          <Row label={t('settings.version')} value="1.0.0" last />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <Text style={styles.sectionLabel}>{t('settings.preferences')}</Text>
+      <View style={styles.card}>
+        <Row
+          label={t('settings.language')}
+          right={
+            <NativeMenuPicker
+              value={language ?? 'en'}
+              onChange={changeLanguage}
+              options={[
+                { value: 'en', label: t('settings.english') },
+                { value: 'es', label: t('settings.spanish') },
+              ]}
+            />
+          }
+        />
+        <Divider />
+        <Row
+          label={t('settings.hapticFeedback')}
+          right={<NativeToggle value={hapticFeedback} onChange={setHapticFeedback} />}
+        />
+        <Divider />
+        <Row
+          label={t('settings.weekStartsOn')}
+          right={
+            <NativeMenuPicker
+              value={weekStartsOn}
+              onChange={setWeekStartsOn}
+              options={[
+                { value: 0, label: t('settings.sunday') },
+                { value: 1, label: t('settings.monday') },
+              ]}
+            />
+          }
+          last
+        />
+      </View>
+
+      <Text style={styles.sectionLabel}>{t('settings.account')}</Text>
+      <View style={styles.card}>
+        <Row label={t('settings.email')} value={email ?? '—'} />
+        <Divider />
+        <Row label={t('settings.signOut')} onPress={confirmSignOut} />
+        <Divider />
+        <Row label={t('settings.leave')} onPress={busy ? undefined : confirmLeave} danger busy={busy === 'leave'} />
+        <Divider />
+        <Row label={t('settings.deleteAccount')} onPress={busy ? undefined : confirmDelete} danger busy={busy === 'delete'} last />
+      </View>
+
+      <Text style={styles.sectionLabel}>{t('settings.about')}</Text>
+      <View style={styles.card}>
+        <Row label={t('settings.version')} value="1.0.0" last />
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─── Native SwiftUI controls (via @expo/ui) ───────────────────────────────────
+
+function NativeToggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <Host matchContents={{ horizontal: true }} style={styles.nativeControl} seedColor={S.accent}>
+      <Toggle isOn={value} onIsOnChange={onChange} />
+    </Host>
+  );
+}
+
+function NativeMenuPicker<T extends string | number>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <Host matchContents={{ horizontal: true }} style={styles.nativeControl} seedColor={S.accentDeep}>
+      <Picker selection={value} onSelectionChange={onChange} modifiers={[pickerStyle('menu'), labelsHidden()]}>
+        {options.map((o) => (
+          <SwiftText key={String(o.value)} modifiers={[tag(o.value)]}>
+            {o.label}
+          </SwiftText>
+        ))}
+      </Picker>
+    </Host>
   );
 }
 
@@ -303,6 +349,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: S.ink900,
     flexShrink: 1,
+  },
+  // Fixed height so the SwiftUI control is centered in the row like the RN labels are.
+  nativeControl: {
+    height: 34,
   },
   rowRight: {
     flexDirection: 'row',
