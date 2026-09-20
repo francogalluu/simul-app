@@ -8,6 +8,8 @@ import type { RootStackParamList } from './types';
 import TabNavigator from './TabNavigator';
 import AddHabitScreen from '@/screens/AddHabitScreen';
 import HabitStatsScreen from '@/screens/HabitStatsScreen';
+import HabitProofsScreen from '@/screens/HabitProofsScreen';
+import IconPickerScreen from '@/screens/IconPickerScreen';
 import AddGoalScreen from '@/screens/AddGoalScreen';
 import MailboxScreen from '@/screens/MailboxScreen';
 import AchievementsScreen from '@/screens/AchievementsScreen';
@@ -124,6 +126,44 @@ export default function RootNavigator() {
                   icon: { type: 'sfSymbol', name: 'xmark' },
                   onPress: () => navigation.goBack(),
                 },
+              ],
+            })}
+          />
+          <Stack.Screen
+            name="IconPicker"
+            component={IconPickerScreen}
+            options={({ navigation }) => ({
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.62, 1],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: S.bg },
+              headerShown: true,
+              headerStyle: { backgroundColor: S.bg },
+              headerShadowVisible: false,
+              title: t('habit.icon'),
+              headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+              unstable_headerLeftItems: () => [
+                { type: 'button', label: t('common.close'), icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
+              ],
+            })}
+          />
+          <Stack.Screen
+            name="HabitProofs"
+            component={HabitProofsScreen}
+            options={({ navigation }) => ({
+              presentation: 'formSheet',
+              sheetAllowedDetents: [0.8, 1],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: S.bg },
+              headerShown: true,
+              headerStyle: { backgroundColor: S.bg },
+              headerShadowVisible: false,
+              title: t('proofs.title'),
+              headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
+              unstable_headerLeftItems: () => [
+                { type: 'button', label: t('common.close'), icon: { type: 'sfSymbol', name: 'xmark' }, onPress: () => navigation.goBack() },
               ],
             })}
           />

@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
-import { useTasksStore, type Habit } from '@/store/tasksStore';
+import { useTasksStore, type Habit, type Proof } from '@/store/tasksStore';
+import { format, parseISO } from 'date-fns';
+import { getDateLocale } from '@/lib/dates';
+import { ProofCard } from '@/components/ProofCard';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { haptic } from '@/lib/haptics';
@@ -21,10 +24,26 @@ export default function MailboxScreen() {
   const habits = useTasksStore((s) => s.habits);
   const acceptInvite = useTasksStore((s) => s.acceptInvite);
   const declineInvite = useTasksStore((s) => s.declineInvite);
-  const { t } = useTranslation();
+  const proofs = useTasksStore((s) => s.proofs);
+  const reviewProof = useTasksStore((s) => s.reviewProof);
+  const { t } = useKindTranslation();
 
   const incoming = useMemo(() => habits.filter((h) => h.status === 'pending' && h.requestedBy === partner), [habits, partner]);
   const sent = useMemo(() => habits.filter((h) => h.status === 'pending' && h.requestedBy === me), [habits, me]);
+
+  // Photos the other person sent that are waiting for my approval, newest first.
+  const toReview = useMemo(() => {
+    const out: { date: string; habit: Habit; proof: Proof }[] = [];
+    for (const [date, byHabit] of Object.entries(proofs)) {
+      for (const [habitId, byPerson] of Object.entries(byHabit)) {
+        const proof = byPerson[partner];
+        const habit = habits.find((h) => h.id === habitId);
+        if (proof?.status === 'pending' && habit) out.push({ date, habit, proof });
+      }
+    }
+    return out.sort((a, b) => b.date.localeCompare(a.date));
+  }, [proofs, habits, partner]);
+  const locale = getDateLocale();
 
   const accept = (h: Habit) => { haptic.success(); acceptInvite(h.id); };
   const decline = (h: Habit) => { haptic.warning(); declineInvite(h.id); };
@@ -38,7 +57,7 @@ export default function MailboxScreen() {
       contentContainerStyle={styles.scroll}
       showsVerticalScrollIndicator={false}
     >
-      {incoming.length === 0 && sent.length === 0 ? (
+      {incoming.length === 0 && sent.length === 0 && toReview.length === 0 ? (
         <EmptyState
           icon="📭"
           title={t('mailbox.emptyTitle')}
@@ -48,6 +67,25 @@ export default function MailboxScreen() {
         />
       ) : (
         <>
+          {toReview.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>{t('mailbox.review')}</Text>
+              <View style={styles.reviewList}>
+                {toReview.map(({ date, habit, proof }) => (
+                  <ProofCard
+                    key={proof.id}
+                    proof={proof}
+                    title={`${habit.icon} ${habit.name}`}
+                    subtitle={`${t('proofs.from', { name: partnerName })} • ${format(parseISO(date), 'd MMM', { locale })}`}
+                    canReview
+                    onApprove={() => { haptic.success(); reviewProof(proof.id, true); }}
+                    onReject={() => { haptic.warning(); reviewProof(proof.id, false); }}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+
           {incoming.length > 0 && (
             <>
               <Text style={styles.sectionLabel}>{t('mailbox.requests')}</Text>
@@ -121,6 +159,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: 32,
   },
+  reviewList: { gap: 14 },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '800',

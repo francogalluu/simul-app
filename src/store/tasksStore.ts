@@ -31,10 +31,26 @@ export interface Habit {
   createdAt: string;
   /** For shared habits: who sent the invite. */
   requestedBy?: Person;
+  /** Completing it needs a photo that the other person validates. */
+  requireProof: boolean;
 }
 
-/** completions[date][habitId] = which people completed it that day. */
+/** completions[date][habitId] = which people completed it that day. A completion whose proof is still pending doesn't count yet. */
 export type Completions = Record<string, Record<string, Partial<Record<Person, boolean>>>>;
+
+/** 'pending' = photo sent, waiting for the other person; 'approved' = validated. */
+export type ProofStatus = 'pending' | 'approved';
+
+export interface Proof {
+  /** The completion row id. */
+  id: string;
+  /** Storage path in the habit-proofs bucket. */
+  path: string;
+  status: ProofStatus;
+}
+
+/** proofs[date][habitId] = the photo each person attached to their completion. */
+export type Proofs = Record<string, Record<string, Partial<Record<Person, Proof>>>>;
 
 export interface HabitDraft {
   name: string;
@@ -42,6 +58,7 @@ export interface HabitDraft {
   /** 'both' creates a pending invite for the partner. */
   owner: 'me' | 'both';
   icon: string;
+  requireProof?: boolean;
 }
 
 type SyncStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -57,6 +74,7 @@ interface HabitRow {
   requested_by: string | null;
   created_on: string;
   created_at: string;
+  require_proof: boolean;
 }
 
 interface CompletionRow {
@@ -64,12 +82,15 @@ interface CompletionRow {
   habit_id: string;
   user_id: string;
   date: string;
+  proof_path: string | null;
+  proof_status: ProofStatus | null;
 }
 
 interface TasksState {
   status: SyncStatus;
   habits: Habit[];
   completions: Completions;
+  proofs: Proofs;
 
   start: (householdId: string, userId: string, members: Member[]) => Promise<void>;
   setMembers: (members: Member[]) => void;
@@ -77,17 +98,20 @@ interface TasksState {
   stop: () => void;
 
   addHabit: (draft: HabitDraft) => string;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon'>>) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'requireProof'>>) => void;
   removeHabit: (id: string) => void;
   acceptInvite: (id: string) => void;
   declineInvite: (id: string) => void;
   /** Flip my completion of a habit on a date. Returns the new completion state for that habit/date. */
-  toggleCompletion: (habitId: string, date: string, person: Person) => Partial<Record<Person, boolean>>;
+  toggleCompletion: (habitId: string, date: string, person: Person, proofPath?: string) => Partial<Record<Person, boolean>>;
+  /** The other person validates (approve) or rejects a pending proof. Rejecting removes the completion. */
+  reviewProof: (completionId: string, approve: boolean) => void;
 }
 
 export const MAX_HABIT_NAME = 80;
 const TIMES: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'All day'];
-const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at';
+const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, require_proof';
+const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path, proof_status';
 const PAGE = 1000;
 
 // ─── Module-level sync state (not part of React state) ───────────────────────
@@ -111,7 +135,7 @@ function slotsFor(members: Member[]): Record<string, Person> {
   return map;
 }
 
-function derive(): Pick<TasksState, 'habits' | 'completions'> {
+function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs'> {
   const habits: Habit[] = [];
   for (const row of Object.values(habitRows).sort((a, b) => a.created_at.localeCompare(b.created_at))) {
     const owner: Owner | undefined = row.owner_id == null ? 'both' : slots[row.owner_id];
@@ -125,15 +149,25 @@ function derive(): Pick<TasksState, 'habits' | 'completions'> {
       status: row.status,
       createdAt: row.created_on,
       requestedBy: row.requested_by ? slots[row.requested_by] : undefined,
+      requireProof: Boolean(row.require_proof),
     });
   }
   const completions: Completions = {};
+  const proofs: Proofs = {};
   for (const row of Object.values(completionRows)) {
     const person = slots[row.user_id];
     if (!person || !habitRows[row.habit_id]) continue;
-    ((completions[row.date] ??= {})[row.habit_id] ??= {})[person] = true;
+    // A completion waiting for its proof to be validated doesn't count (streaks, progress) yet.
+    if (row.proof_status !== 'pending') ((completions[row.date] ??= {})[row.habit_id] ??= {})[person] = true;
+    if (row.proof_path) {
+      ((proofs[row.date] ??= {})[row.habit_id] ??= {})[person] = {
+        id: row.id,
+        path: row.proof_path,
+        status: row.proof_status === 'pending' ? 'pending' : 'approved',
+      };
+    }
   }
-  return { habits, completions };
+  return { habits, completions, proofs };
 }
 
 async function fetchAll<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
@@ -163,7 +197,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
           supabase.from('habits').select(HABIT_COLUMNS).eq('household_id', householdId).order('id').range(from, to),
         ),
         fetchAll<CompletionRow>((from, to) =>
-          supabase.from('completions').select('id, habit_id, user_id, date').eq('household_id', householdId).order('id').range(from, to),
+          supabase.from('completions').select(COMPLETION_COLUMNS).eq('household_id', householdId).order('id').range(from, to),
         ),
       ]);
     try {
@@ -210,6 +244,15 @@ export const useTasksStore = create<TasksState>()((set, get) => {
     publish();
   }
 
+  const toRow = (r: CompletionRow): CompletionRow => ({
+    id: r.id,
+    habit_id: r.habit_id,
+    user_id: r.user_id,
+    date: r.date,
+    proof_path: r.proof_path ?? null,
+    proof_status: r.proof_status ?? null,
+  });
+
   function onCompletionChange(payload: RealtimePostgresChangesPayload<CompletionRow & { household_id: string }>) {
     if (payload.eventType === 'DELETE') {
       const id = (payload.old as Partial<CompletionRow>).id;
@@ -224,7 +267,12 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       for (const [cid, c] of Object.entries(completionRows)) {
         if (completionKey(c.habit_id, c.user_id, c.date) === completionKey(row.habit_id, row.user_id, row.date)) delete completionRows[cid];
       }
-      completionRows[row.id] = { id: row.id, habit_id: row.habit_id, user_id: row.user_id, date: row.date };
+      completionRows[row.id] = toRow(row);
+    } else if (payload.eventType === 'UPDATE') {
+      // The other person validated a proof (pending -> approved).
+      const row = payload.new;
+      if (!ctx || row.household_id !== ctx.householdId || !completionRows[row.id]) return;
+      completionRows[row.id] = toRow(row);
     } else {
       return;
     }
@@ -242,16 +290,26 @@ export const useTasksStore = create<TasksState>()((set, get) => {
 
     const local = Object.values(completionRows).find((c) => c.habit_id === habitId && c.user_id === userId && c.date === date);
     const { data: server, error: readError } = await supabase
-      .from('completions').select('id').eq('habit_id', habitId).eq('user_id', userId).eq('date', date).maybeSingle();
+      .from('completions').select('id, proof_path').eq('habit_id', habitId).eq('user_id', userId).eq('date', date).maybeSingle();
     if (gen !== generation) return;
     if (readError) throw readError;
 
+    const removedProofPath = server?.proof_path ?? null;
     if (local && !server) {
-      const { error } = await supabase.from('completions').insert({ id: local.id, household_id: householdId, habit_id: habitId, user_id: userId, date });
+      const { error } = await supabase.from('completions').insert({
+        id: local.id,
+        household_id: householdId,
+        habit_id: habitId,
+        user_id: userId,
+        date,
+        ...(local.proof_path ? { proof_path: local.proof_path, proof_status: local.proof_status ?? 'pending' } : {}),
+      });
       if (error && error.code !== '23505') throw error; // 23505: already there (another device)
     } else if (!local && server) {
       const { error } = await supabase.from('completions').delete().eq('id', server.id);
       if (error) throw error;
+      // The photo of a removed completion goes with it (best effort).
+      if (removedProofPath) void supabase.storage.from('habit-proofs').remove([removedProofPath]);
     } else if (local && server && local.id !== server.id) {
       delete completionRows[local.id];
       completionRows[server.id] = { ...local, id: server.id };
@@ -262,6 +320,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
     status: 'idle',
     habits: [],
     completions: {},
+    proofs: {},
 
     start: async (householdId, userId, members) => {
       if (ctx?.householdId === householdId && ctx.userId === userId && channel) {
@@ -284,6 +343,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'habits', filter }, onHabitChange)
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'habits' }, onHabitChange)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'completions', filter }, onCompletionChange)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'completions', filter }, onCompletionChange)
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'completions' }, onCompletionChange)
         .subscribe((status) => {
           if (gen !== generation || status !== 'SUBSCRIBED') return;
@@ -314,7 +374,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       slots = {};
       pendingToggles.clear();
       pendingHabitInserts.clear();
-      set({ status: 'idle', habits: [], completions: {} });
+      set({ status: 'idle', habits: [], completions: {}, proofs: {} });
     },
 
     addHabit: (draft) => {
@@ -333,6 +393,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         requested_by: shared ? userId : null,
         created_on: today(),
         created_at: new Date().toISOString(),
+        require_proof: Boolean(draft.requireProof),
       };
       habitRows[row.id] = row;
       publish();
@@ -358,10 +419,11 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const before = habitRows[id];
       if (!before) return;
       const gen = generation;
-      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day'>> = {};
+      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'require_proof'>> = {};
       if (patch.name != null) update.name = patch.name.trim().slice(0, MAX_HABIT_NAME);
       if (patch.icon != null) update.icon = patch.icon.slice(0, 16);
       if (patch.time != null && TIMES.includes(patch.time as TimeOfDay)) update.time_of_day = patch.time;
+      if (patch.requireProof != null) update.require_proof = patch.requireProof;
       habitRows[id] = { ...before, ...update };
       publish();
 
@@ -441,7 +503,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       })();
     },
 
-    toggleCompletion: (habitId, date, person) => {
+    toggleCompletion: (habitId, date, person, proofPath) => {
       const current = get().completions[date]?.[habitId] ?? {};
       if (!ctx || slots[ctx.userId] !== person || !habitRows[habitId]) return current;
       const { userId } = ctx;
@@ -451,8 +513,17 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       if (existing) {
         delete completionRows[existing.id];
       } else {
+        // A habit that requires proof can only be completed with its photo, and starts pending.
+        if (habitRows[habitId].require_proof && !proofPath) return current;
         const id = Crypto.randomUUID();
-        completionRows[id] = { id, habit_id: habitId, user_id: userId, date };
+        completionRows[id] = {
+          id,
+          habit_id: habitId,
+          user_id: userId,
+          date,
+          proof_path: proofPath ?? null,
+          proof_status: proofPath && habitRows[habitId].require_proof ? 'pending' : null,
+        };
       }
       publish();
 
@@ -473,6 +544,28 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       pendingToggles.set(key, job);
 
       return get().completions[date]?.[habitId] ?? {};
+    },
+
+    reviewProof: (completionId, approve) => {
+      const before = completionRows[completionId];
+      if (!ctx || !before || before.user_id === ctx.userId || before.proof_status !== 'pending') return;
+      const gen = generation;
+      if (approve) completionRows[completionId] = { ...before, proof_status: 'approved' };
+      else delete completionRows[completionId];
+      publish();
+
+      void (async () => {
+        const query = approve
+          ? supabase.from('completions').update({ proof_status: 'approved' }).eq('id', completionId).select('id')
+          : supabase.from('completions').delete().eq('id', completionId).select('id');
+        const { data, error } = await query;
+        if (gen !== generation) return;
+        if (error || !data?.length) {
+          completionRows[completionId] = before;
+          publish();
+          fail('tasks.reviewProof', error ?? { code: '42501' });
+        }
+      })();
     },
   };
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
@@ -18,7 +18,7 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { NativeSegmented, useNativeConfirm } from '@/components/NativeControls';
+import { NativeSegmented, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
 
 type Mode = 'single' | 'shared';
 
@@ -44,8 +44,6 @@ const PRESETS: Array<{ emoji: string; key: string; time: string }> = [
   { emoji: '📞', key: 'callFamily', time: 'Afternoon' },
   { emoji: '✍️', key: 'journal', time: 'Evening' },
 ];
-
-const ICONS = ['⭐', '💧', '🧘', '🚶', '📖', '🏋️', '🥗', '😴', '🙏', '🧹', '🚭', '🧴', '🚿', '🦷', '💊', '🏃', '📵', '💰', '🗣️', '📞', '✍️', '🍳', '🎸', '🧠', '☀️', '🌙', '🐶', '💻', '🎨', '🧺'];
 
 const TIMES = ['Morning', 'Afternoon', 'Evening', 'All day'];
 
@@ -95,7 +93,7 @@ function PresetCard({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function AddHabitScreen() {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const presetLabel = (preset: (typeof PRESETS)[number]) => t(`habit.presets.${preset.key}`);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AddHabit'>>();
@@ -115,6 +113,12 @@ export default function AddHabitScreen() {
   const [mode, setMode] = useState<Mode>(editing?.owner === 'both' ? 'shared' : 'single');
   const [name, setName] = useState(editing?.name ?? '');
   const [icon, setIcon] = useState(editing?.icon ?? '⭐');
+  const [requireProof, setRequireProof] = useState(editing?.requireProof ?? false);
+  // The icon page hands its pick back through this screen's route params.
+  const pickedIcon = route.params?.icon;
+  useEffect(() => {
+    if (pickedIcon) setIcon(pickedIcon);
+  }, [pickedIcon]);
   const [timeChoice, setTimeChoice] = useState<string>(() => {
     const saved = editing?.time ?? 'All day';
     return TIMES.includes(saved) ? saved : 'All day';
@@ -145,14 +149,14 @@ export default function AddHabitScreen() {
     if (!trimmed) return;
 
     if (isEdit && editing) {
-      updateHabit(editing.id, { name: trimmed, icon, time });
+      updateHabit(editing.id, { name: trimmed, icon, time, requireProof });
       haptic.success();
       close();
       return;
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both' });
+      addHabit({ name: trimmed, time, icon, owner: 'both', requireProof });
       haptic.success();
       Alert.alert(
         t('habit.inviteSent'),
@@ -164,7 +168,7 @@ export default function AddHabitScreen() {
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: 'me' });
+    addHabit({ name: trimmed, time, icon, owner: 'me', requireProof });
     haptic.success();
     close();
   };
@@ -199,6 +203,16 @@ export default function AddHabitScreen() {
       unstable_headerRightItems: () => [
         ...(isEdit && editing
           ? [
+              ...(editing.requireProof
+                ? [
+                    {
+                      type: 'button' as const,
+                      label: t('proofs.title'),
+                      icon: { type: 'sfSymbol' as const, name: 'photo.on.rectangle' as const },
+                      onPress: () => navigation.navigate('HabitProofs', { habitId: editing.id }),
+                    },
+                  ]
+                : []),
               {
                 type: 'button' as const,
                 label: t('stats.title'),
@@ -228,7 +242,7 @@ export default function AddHabitScreen() {
     });
     // handleDelete/handleSubmit only depend on the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, editing?.id]);
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, editing?.id, editing?.requireProof]);
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
@@ -290,9 +304,17 @@ export default function AddHabitScreen() {
 
             <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.name')}</Text>
             <View style={s.nameRow}>
-              <View style={s.nameIcon}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('habit.pickIcon')}
+                onPress={() => { haptic.tap(); navigation.navigate('IconPicker', { current: icon }); }}
+                style={({ pressed }) => [s.nameIcon, pressed && { opacity: 0.7 }]}
+              >
                 <Text style={s.nameIconText}>{icon}</Text>
-              </View>
+                <View style={s.nameIconBadge}>
+                  <Text style={s.nameIconBadgeText}>✎</Text>
+                </View>
+              </Pressable>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -304,17 +326,19 @@ export default function AddHabitScreen() {
               />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.icon')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.iconRow} keyboardShouldPersistTaps="handled">
-              {ICONS.map((emoji) => {
-                const selected = emoji === icon;
-                return (
-                  <Pressable key={emoji} onPress={() => { haptic.tap(); setIcon(emoji); }} style={[s.iconChip, selected && s.iconChipSelected]}>
-                    <Text style={s.iconChipText}>{emoji}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <View style={s.proofRow}>
+              <View style={s.proofText}>
+                <Text style={s.proofTitle}>{t('habit.proof.title')}</Text>
+                <Text style={s.proofHint}>
+                  {partner.joined || requireProof ? t('habit.proof.hint', { name: partnerName }) : t('habit.proof.needsPartner')}
+                </Text>
+              </View>
+              <NativeToggle
+                value={requireProof}
+                onChange={(next) => { haptic.tap(); setRequireProof(next); }}
+                disabled={!partner.joined && !requireProof}
+              />
+            </View>
           </View>
         </ScrollView>
         {dialog}
@@ -400,6 +424,32 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  nameIconBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: S.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: S.card,
+  },
+  nameIconBadgeText: { fontSize: 10, color: '#FFFFFF', fontWeight: '800' },
+  proofRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: S.line,
+  },
+  proofText: { flex: 1, minWidth: 0, gap: 2 },
+  proofTitle: { fontSize: 15, fontWeight: '700', color: S.ink900 },
+  proofHint: { fontSize: 12, lineHeight: 16, color: S.tertiary },
   nameIcon: {
     width: 46,
     height: 46,
@@ -418,26 +468,5 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: S.ink900,
-  },
-  iconRow: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  iconChip: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: S.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  iconChipSelected: {
-    borderColor: S.accent,
-    backgroundColor: S.accentSoft,
-  },
-  iconChipText: {
-    fontSize: 20,
   },
 });

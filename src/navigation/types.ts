@@ -5,7 +5,9 @@ export type RootStackParamList = {
   Onboarding: undefined;
   NotificationsPrompt: undefined;
   Tabs: undefined;
-  AddHabit: { habitId?: string } | undefined;
+  AddHabit: { habitId?: string; icon?: string } | undefined;
+  IconPicker: { current: string };
+  HabitProofs: { habitId: string };
   HabitStats: { habitId: string };
   // Goals tab is hidden for now (not deleted — GoalsScreen/AddGoalScreen/goalsStore
   // are all still here, just unreachable from the tab bar). AddGoal stays

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { S } from './simulTheme';
 import { avatarPublicUrl } from './avatarUpload';
 import { useHouseholdStore } from '@/store/householdStore';
+import { useHouseholdKind, kindContext } from './kind';
 
 /**
  * The two people in the household, as slots. 'A' is whoever created the
@@ -52,7 +53,8 @@ export function usePeople(): People {
   const { t } = useTranslation();
   const members = useHouseholdStore((s) => s.members);
   // Until the partner joins their slot shows a translated "Partner" placeholder.
-  const placeholder = t('settings.partner');
+  const kind = useHouseholdKind();
+  const placeholder = t('settings.partner', { context: kindContext(kind) });
   return useMemo(() => ({ A: info('A', members[0], placeholder), S: info('S', members[1], placeholder) }), [members, placeholder]);
 }
 

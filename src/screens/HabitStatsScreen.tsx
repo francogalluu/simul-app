@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { SmoothChart } from '../../modules/simul-chart';
@@ -15,7 +15,7 @@ const WINDOW_DAYS = 30;
 
 // Per-habit stats, presented as a native formSheet from the edit-habit sheet (see RootNavigator).
 export default function HabitStatsScreen() {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const navigation = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, 'HabitStats'>>();
   const me = useMe();

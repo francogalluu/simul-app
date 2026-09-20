@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '@/navigation/types';
@@ -14,7 +14,7 @@ import { S, fonts, SCREEN_PADDING } from '@/lib/simulTheme';
 
 // Detail of one badge, presented as a native formSheet (see RootNavigator).
 export default function AchievementDetailScreen() {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const navigation = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, 'AchievementDetail'>>();
   const me = useMe();

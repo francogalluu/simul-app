@@ -6,10 +6,10 @@ import { S } from '@/lib/simulTheme';
 
 // Real SwiftUI controls (via @expo/ui), tinted with the app's greens.
 
-export function NativeToggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
+export function NativeToggle({ value, onChange, disabled }: { value: boolean; onChange: (next: boolean) => void; disabled?: boolean }) {
   return (
     <Host matchContents={{ horizontal: true }} style={styles.control} seedColor={S.accent}>
-      <Toggle isOn={value} onIsOnChange={onChange} />
+      <Toggle isOn={value} onIsOnChange={onChange} modifiers={disabled ? [disabledModifier(true)] : undefined} />
     </Host>
   );
 }

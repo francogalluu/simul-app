@@ -40,9 +40,11 @@
     "household": "Household",
     "yourName": "Your name",
     "partner": "Partner",
+    "partner_friend": "Friend",
     "partnerNotJoined": "Not joined yet",
     "inviteCode": "Invite code",
     "codeHint": "Your partner signs in, then enters this code. It works for one person only.",
+    "codeHint_friend": "Your friend signs in, then enters this code. It works for one person only.",
     "shareCode": "Share code",
     "shareMessage": "Join me on Simul! Our invite code is {{code}}",
     "newCode": "New code",
@@ -80,11 +82,14 @@
   "onboarding": {
     "title": "Welcome to Simul",
     "subtitle": "Simul is for two. Start a household or join your partner's.",
+    "subtitle_friend": "Simul is for two. Start a household or join your friend's.",
     "nameLabel": "Your name",
     "namePlaceholder": "What your partner calls you",
+    "namePlaceholder_friend": "What your friend calls you",
     "create": "Start a household",
     "createHint": "You'll get an invite code to share.",
     "join": "Join my partner",
+    "join_friend": "Join my friend",
     "joinHint": "Use the code from their Settings.",
     "codeLabel": "Invite code",
     "codePlaceholder": "ABCD-2345",
@@ -101,8 +106,15 @@
     "openSettings": "Open Settings",
     "notifTitle": "Stay on track",
     "notifBody": "We'll let you know about invites from your partner and, soon, habit reminders. You can change this anytime in Settings.",
+    "notifBody_friend": "We'll let you know about invites from your friend and, soon, habit reminders.",
     "notifEnable": "Enable notifications",
-    "notifSkip": "Not now"
+    "notifSkip": "Not now",
+    "kindLabel": "Who is it for?",
+    "kindCouple": "Partner",
+    "kindFriend": "Friend",
+    "kindHint_couple": "Habits for two, as a couple.",
+    "kindHint_friend": "Habits with a friend, to keep each other going.",
+    "joinKindNote": "You'll use Simul with whoever invited you."
   },
   "errors": {
     "syncTitle": "Couldn't save that",
@@ -127,6 +139,7 @@
     "emptyTitle": "No habits yet",
     "emptyTitleReadOnly": "Nothing here yet",
     "emptyBody": "Add your first habit — for yourself, or one to do together.",
+    "emptyBody_friend": "Add your first habit — for yourself, or one to do together.",
     "emptyBodyReadOnly": "No habits existed on this day.",
     "addHabit": "Add a habit",
     "waitingToAccept": "Waiting for {{name}} to accept",
@@ -135,7 +148,10 @@
     "day_one": "{{count}} Day",
     "day_other": "{{count}} Days",
     "mailbox": "Mailbox",
-    "achievements": "Achievements"
+    "achievements": "Achievements",
+    "proofPending": "Waiting for {{name}} to approve",
+    "review": "Review",
+    "proofSent": "{{name}} sent a photo"
   },
   "times": {
     "Morning": "Morning",
@@ -150,12 +166,15 @@
     "emptyAction": "Invite {{name}} to a habit",
     "requests": "Requests for you",
     "wantsTogetherTail": "wants to do this together",
+    "wantsTogetherTail_friend": "wants to do this together",
     "everyDayBoth": "every day, both of you",
     "decline": "Decline",
     "accept": "Accept",
     "waitingOn": "Waiting on {{name}}",
     "sentWaiting": "Sent • waiting for {{name}} to accept",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "review": "To review",
+    "reviewItem": "{{name}} sent proof for {{habit}}"
   },
   "achievements": {
     "title": "Achievements",
@@ -173,11 +192,13 @@
       },
       "together-first": {
         "title": "Better together",
-        "description": "Finish a shared habit with your partner."
+        "description": "Finish a shared habit with your partner.",
+        "description_friend": "Finish a shared habit with your friend."
       },
       "inviter": {
         "title": "Team player",
-        "description": "Invite your partner to a shared habit."
+        "description": "Invite your partner to a shared habit.",
+        "description_friend": "Invite your friend to a shared habit."
       },
       "streak-3": {
         "title": "On a roll",
@@ -189,7 +210,8 @@
       },
       "together-7": {
         "title": "In sync",
-        "description": "A 7-day streak, together."
+        "description": "A 7-day streak, together.",
+        "description_friend": "A 7-day streak, together."
       },
       "habits-5": {
         "title": "Full plate",
@@ -209,11 +231,13 @@
       },
       "together-30": {
         "title": "Inseparable",
-        "description": "A 30-day streak, together."
+        "description": "A 30-day streak, together.",
+        "description_friend": "A 30-day streak, together."
       },
       "perfect-week": {
         "title": "Perfect week",
-        "description": "Every single day of a week, done together."
+        "description": "Every single day of a week, done together.",
+        "description_friend": "Every single day of a week, done together."
       },
       "comeback": {
         "title": "The comeback",
@@ -221,7 +245,8 @@
       },
       "together-14": {
         "title": "Two weeks deep",
-        "description": "A 14-day streak, together."
+        "description": "A 14-day streak, together.",
+        "description_friend": "A 14-day streak, together."
       }
     }
   },
@@ -262,7 +287,9 @@
     "inviteSent": "Invite sent 💌",
     "inviteSentJoined": "{{name}} will find \"{{habit}}\" in their mailbox. It shows as pending on your Home until they accept.",
     "inviteSentWaiting": "\"{{habit}}\" will be waiting in your partner's mailbox as soon as they join with your invite code (Settings → Household).",
+    "inviteSentWaiting_friend": "\"{{habit}}\" will be waiting in your friend's mailbox as soon as they join with your invite code (Settings → Household).",
     "who_together": "Together with {{name}}",
+    "who_together_friend": "Together with {{name}}",
     "who_you": "Just you",
     "who_partner": "{{name}}'s habit",
     "presets": {
@@ -286,6 +313,33 @@
       "practiceLanguage": "Practice language",
       "callFamily": "Call family",
       "journal": "Journal"
+    },
+    "pickIcon": "Choose icon",
+    "proof": {
+      "title": "Proof of work",
+      "hint": "Attach a photo when you complete it. {{name}} confirms it before it counts.",
+      "needsPartner": "Available once someone joins to confirm the photos."
     }
+  },
+  "proof": {
+    "captureTitle": "Add your proof",
+    "captureMessage": "This habit needs a photo so {{name}} can confirm it.",
+    "takePhoto": "Take photo",
+    "chooseLibrary": "Choose from library",
+    "permission": "Allow camera access in Settings to take a photo.",
+    "uploadError": "Couldn't upload the photo. Try again.",
+    "undoTitle": "Remove this proof?",
+    "undoBody": "The photo is deleted and the habit goes back to not done.",
+    "undo": "Remove"
+  },
+  "proofs": {
+    "title": "Proof",
+    "empty": "No photos yet. They show up here when a habit gets completed.",
+    "pending": "Waiting for approval",
+    "approved": "Approved",
+    "approve": "Approve",
+    "reject": "Reject",
+    "from": "From {{name}}",
+    "rejectHint": "Rejecting removes the completion so they can try again."
   }
 }

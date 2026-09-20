@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Alert, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Gesture,
@@ -24,7 +24,9 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useTasksStore, type Habit } from '@/store/tasksStore';
 import { useHouseholdStore } from '@/store/householdStore';
 import { addDays, getWeekDates, isFuture, today } from '@/lib/dates';
-import { partnerOf, useMe } from '@/lib/people';
+import { partnerOf, useMe, usePeople } from '@/lib/people';
+import { useKindTranslation } from '@/lib/kind';
+import { pickProof } from '@/lib/proofUpload';
 import { togetherStreak } from '@/lib/streaks';
 import { haptic } from '@/lib/haptics';
 import { S, SCREEN_PADDING, TAB_BAR_CLEARANCE } from '@/lib/simulTheme';
@@ -57,6 +59,10 @@ export default function HomeScreen() {
   const weekStartsOn = useSettingsStore((s) => s.weekStartsOn);
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
+  const proofs = useTasksStore((s) => s.proofs);
+  const userId = useHouseholdStore((s) => s.userId);
+  const { t } = useKindTranslation();
+  const partnerName = usePeople()[partnerOf(useMe())].name;
   useHabitsWidgetSync(me, habits, completions);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
 
@@ -67,10 +73,16 @@ export default function HomeScreen() {
 
   const weekDates = useMemo(() => getWeekDates(selectedDate, weekStartsOn), [selectedDate, weekStartsOn]);
   const ourStreak = useMemo(() => togetherStreak(habits, completions), [habits, completions]);
-  const unread = useMemo(
-    () => habits.filter((h) => h.status === 'pending' && h.requestedBy != null && h.requestedBy !== me).length,
-    [habits, me],
-  );
+  const unread = useMemo(() => {
+    const invites = habits.filter((h) => h.status === 'pending' && h.requestedBy != null && h.requestedBy !== me).length;
+    // Photos from the other person waiting for my approval also land in the mailbox.
+    const partner = partnerOf(me);
+    let toReview = 0;
+    for (const byHabit of Object.values(proofs)) {
+      for (const byPerson of Object.values(byHabit)) if (byPerson[partner]?.status === 'pending') toReview += 1;
+    }
+    return invites + toReview;
+  }, [habits, proofs, me]);
   const readOnly = isFuture(selectedDate);
 
   // ─── Day swiping ────────────────────────────────────────────────────────────
@@ -133,9 +145,49 @@ export default function HomeScreen() {
   }));
 
   // ─── Completing habits ──────────────────────────────────────────────────────
+  // Habits that require proof: tapping asks for a photo (which the other person then validates), and
+  // tapping again on one already sent offers to take it back.
+  const completeWithProof = useCallback(
+    async (habit: Habit, source: 'camera' | 'library') => {
+      if (!userId) return;
+      const result = await pickProof(userId, habit.id, source);
+      if ('cancelled' in result) return;
+      if ('error' in result) {
+        haptic.warning();
+        Alert.alert(t('errors.syncTitle'), result.error === 'permission' && source === 'camera' ? t('proof.permission') : t('proof.uploadError'));
+        return;
+      }
+      haptic.success();
+      toggleCompletion(habit.id, selectedDate, me, result.path);
+    },
+    [userId, toggleCompletion, selectedDate, me, t],
+  );
+
+  const handleProofToggle = useCallback(
+    (habit: Habit) => {
+      if (proofs[selectedDate]?.[habit.id]?.[me]) {
+        Alert.alert(t('proof.undoTitle'), t('proof.undoBody'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('proof.undo'), style: 'destructive', onPress: () => { haptic.warning(); toggleCompletion(habit.id, selectedDate, me); } },
+        ]);
+        return;
+      }
+      Alert.alert(t('proof.captureTitle'), t('proof.captureMessage', { name: partnerName }), [
+        { text: t('proof.takePhoto'), onPress: () => void completeWithProof(habit, 'camera') },
+        { text: t('proof.chooseLibrary'), onPress: () => void completeWithProof(habit, 'library') },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+    },
+    [proofs, selectedDate, me, t, partnerName, toggleCompletion, completeWithProof],
+  );
+
   const handleToggle = useCallback(
     (habit: Habit) => {
       if (readOnly) return;
+      if (habit.requireProof) {
+        handleProofToggle(habit);
+        return;
+      }
       const next = toggleCompletion(habit.id, selectedDate, me);
       const nowDone = Boolean(next[me]);
       if (habit.owner === 'both' && nowDone && next[partnerOf(me)]) {
@@ -149,7 +201,7 @@ export default function HomeScreen() {
         haptic.tap();
       }
     },
-    [readOnly, toggleCompletion, selectedDate, me],
+    [readOnly, toggleCompletion, selectedDate, me, handleProofToggle],
   );
 
   // ─── Pull to refresh ────────────────────────────────────────────────────────
@@ -211,6 +263,8 @@ export default function HomeScreen() {
               readOnly={readOnly}
               habits={habits}
               completions={completions}
+              proofs={proofs}
+              onOpenProofs={(h) => navigation.navigate('HabitProofs', { habitId: h.id })}
               celebratingId={celebratingId}
               onToggle={handleToggle}
               onEdit={(h) => {

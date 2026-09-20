@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { useAuthStore } from '@/store/authStore';
-import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
+import { useHouseholdStore, cleanName, MAX_NAME_LENGTH, type HouseholdKind } from '@/store/householdStore';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
 import { randomAvatarColor } from '@/lib/avatarColors';
@@ -12,6 +12,7 @@ import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { TextField, PrimaryButton, ErrorText } from '@/components/FormControls';
 import { AvatarPicker, type AvatarValue } from '@/components/AvatarPicker';
 import { ColorPicker } from '@/components/ColorPicker';
+import { NativeSegmented } from '@/components/NativeControls';
 import { MeshBackground } from '@/components/MeshBackground';
 
 /** Formats raw input as XXXX-XXXX using the invite-code alphabet. */
@@ -22,7 +23,9 @@ const formatCode = (raw: string) => {
 
 /** Signed in but not in a household yet: pick a name, then create one or join with a code. */
 export default function OnboardingScreen() {
-  const { t } = useTranslation();
+  // Who this household is for. Onboarding runs before a household exists, so the wording follows this choice.
+  const [kind, setKind] = useState<HouseholdKind>('couple');
+  const { t } = useKindTranslation(kind);
   const userId = useAuthStore((s) => s.session?.user.id);
   const signOut = useAuthStore((s) => s.signOut);
   const createHousehold = useHouseholdStore((s) => s.createHousehold);
@@ -38,15 +41,15 @@ export default function OnboardingScreen() {
 
   const nameOk = cleanName(name).length > 0;
 
-  const run = async (kind: 'create' | 'join') => {
+  const run = async (action: 'create' | 'join') => {
     if (!nameOk) {
       setError(errorMessage('name_required'));
       return;
     }
-    setBusy(kind);
+    setBusy(action);
     setError(null);
     const profile = { color, avatarPath: avatar.path };
-    const res = kind === 'create' ? await createHousehold(name, profile) : await joinHousehold(code, name, profile);
+    const res = action === 'create' ? await createHousehold(name, profile, kind) : await joinHousehold(code, name, profile);
     // On success the navigator swaps to the app; only handle failures here.
     if (res.error) {
       setBusy(null);
@@ -98,6 +101,18 @@ export default function OnboardingScreen() {
 
             {mode === 'choose' ? (
               <>
+                <View style={styles.kindBlock}>
+                  <Text style={styles.colorLabel}>{t('onboarding.kindLabel')}</Text>
+                  <NativeSegmented
+                    value={kind}
+                    onChange={(next: HouseholdKind) => { haptic.tap(); setKind(next); }}
+                    options={[
+                      { value: 'couple', label: t('onboarding.kindCouple') },
+                      { value: 'friend', label: t('onboarding.kindFriend') },
+                    ]}
+                  />
+                  <Text style={styles.hint}>{t(kind === 'friend' ? 'onboarding.kindHint_friend' : 'onboarding.kindHint_couple')}</Text>
+                </View>
                 <View style={styles.option}>
                   <PrimaryButton label={t('onboarding.create')} onPress={() => run('create')} loading={busy === 'create'} disabled={busy != null} />
                   <Text style={styles.hint}>{t('onboarding.createHint')}</Text>
@@ -185,6 +200,9 @@ const styles = StyleSheet.create({
   avatarRow: {
     alignItems: 'center',
     marginBottom: 4,
+  },
+  kindBlock: {
+    gap: 10,
   },
   colorBlock: {
     gap: 10,

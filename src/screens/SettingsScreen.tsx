@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/AppText';
 import { ChevronRight } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { useHouseholdStore, cleanName, MAX_NAME_LENGTH } from '@/store/householdStore';
@@ -19,7 +19,7 @@ import { NativeMenuPicker, NativeSecondaryButton, NativeShareButton, CONFIRM_ANC
 const formatCode = (code: string | null | undefined) => (code ? `${code.slice(0, 4)}-${code.slice(4)}` : '—');
 
 export default function SettingsScreen() {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const {
     hapticFeedback, setHapticFeedback,
     weekStartsOn, setWeekStartsOn,

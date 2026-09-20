@@ -11,9 +11,13 @@ export interface Member {
   joinedAt: string;
 }
 
+export type HouseholdKind = 'couple' | 'friend';
+
 export interface Household {
   id: string;
   inviteCode: string | null;
+  /** Two partners or two friends: chosen when the household is created. */
+  kind: HouseholdKind;
 }
 
 /** 'none' = signed in but not part of a household yet (show onboarding). */
@@ -36,7 +40,7 @@ interface HouseholdState {
 
   load: (userId: string) => Promise<void>;
   refreshMembers: () => Promise<void>;
-  createHousehold: (displayName: string, profile?: Profile) => Promise<Result>;
+  createHousehold: (displayName: string, profile?: Profile, kind?: HouseholdKind) => Promise<Result>;
   joinHousehold: (code: string, displayName: string, profile?: Profile) => Promise<Result>;
   regenerateInviteCode: () => Promise<Result>;
   rename: (displayName: string) => Promise<Result>;
@@ -80,7 +84,7 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     // RLS only returns the caller's own household and roster.
     const fetchOnce = () =>
       Promise.all([
-        supabase.from('households').select('id, invite_code').maybeSingle(),
+        supabase.from('households').select('id, invite_code, kind').maybeSingle(),
         supabase.from('household_members').select('id, user_id, display_name, color, avatar_path, joined_at'),
       ]);
 
@@ -110,7 +114,11 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     }
     set({
       status: 'ready',
-      household: { id: householdRes.data.id, inviteCode: householdRes.data.invite_code },
+      household: {
+        id: householdRes.data.id,
+        inviteCode: householdRes.data.invite_code,
+        kind: householdRes.data.kind === 'friend' ? 'friend' : 'couple',
+      },
       members: (membersRes.data as MemberRow[]).map(toMember).sort(byJoinOrder),
     });
   },
@@ -120,8 +128,8 @@ export const useHouseholdStore = create<HouseholdState>()((set, get) => ({
     if (userId) await get().load(userId);
   },
 
-  createHousehold: async (displayName, profile) => {
-    const { error } = await supabase.rpc('create_household', { p_display_name: cleanName(displayName) });
+  createHousehold: async (displayName, profile, kind = 'couple') => {
+    const { error } = await supabase.rpc('create_household', { p_display_name: cleanName(displayName), p_kind: kind });
     if (error) {
       logError('household.create', error);
       return { error: toAppError(error) };

@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
-import type { Completions, Habit } from '@/store/tasksStore';
+import type { Completions, Habit, Proof, Proofs } from '@/store/tasksStore';
 import { EmptyState } from '@/components/EmptyState';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -26,6 +26,15 @@ function ClockIcon({ size = 13, color = S.amber }: { size?: number; color?: stri
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
       <Circle cx={12} cy={12} r={9} />
       <Path d="M12 7v5l3.5 2" />
+    </Svg>
+  );
+}
+
+function CameraIcon({ size = 14, color = S.muted }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <Circle cx={12} cy={13} r={3.5} />
     </Svg>
   );
 }
@@ -64,9 +73,11 @@ export function TaskList({
   readOnly,
   habits,
   completions,
+  proofs,
   celebratingId,
   onToggle,
   onEdit,
+  onOpenProofs,
   onAddHabit,
 }: {
   me: Person;
@@ -74,12 +85,14 @@ export function TaskList({
   readOnly: boolean;
   habits: Habit[];
   completions: Completions;
+  proofs: Proofs;
   celebratingId: string | null;
   onToggle: (habit: Habit) => void;
   onEdit: (habit: Habit) => void;
+  onOpenProofs: (habit: Habit) => void;
   onAddHabit: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const partner = partnerOf(me);
   const people = usePeople();
   const visible = habits.filter(
@@ -136,6 +149,8 @@ export function TaskList({
                   state={rowState(habit, completions, date, me)}
                   readOnly={readOnly}
                   celebrating={celebratingId === habit.id}
+                  proofs={proofs[date]?.[habit.id]}
+                  onOpenProofs={() => onOpenProofs(habit)}
                   onToggle={() => onToggle(habit)}
                   // Only the owner can edit a habit; either person can edit a shared one.
                   onLongPress={habit.owner === 'both' || habit.owner === me ? () => onEdit(habit) : undefined}
@@ -157,6 +172,8 @@ function TaskRow({
   state,
   readOnly,
   celebrating,
+  proofs,
+  onOpenProofs,
   onToggle,
   onLongPress,
 }: {
@@ -165,20 +182,27 @@ function TaskRow({
   state: RowState;
   readOnly: boolean;
   celebrating: boolean;
+  proofs?: Partial<Record<Person, Proof>>;
+  onOpenProofs: () => void;
   onToggle: () => void;
   onLongPress?: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const partner = partnerOf(me);
   const partnerName = usePeople()[partner].name;
   const timeLabel = t(`times.${habit.time}`, { defaultValue: habit.time });
   const k = state.kind;
   const isDone = k === 'done' || k === 'partner-only-done';
   const dimmed = k === 'pending-invite';
+  // Proof of work: my photo waiting for the other person, or theirs waiting for me.
+  const awaitingApproval = proofs?.[me]?.status === 'pending';
+  const toReview = proofs?.[partner]?.status === 'pending';
   const canToggle = !readOnly && (k === 'todo' || k === 'done' || k === 'waiting-partner' || k === 'partner-waiting');
 
   const meta = (() => {
     if (k === 'pending-invite') return <Text style={styles.meta}>{t('home.waitingToAccept', { name: partnerName })}</Text>;
+    if (awaitingApproval) return <Text style={[styles.meta, { color: S.amber }]}>{t('home.proofPending', { name: partnerName })}</Text>;
+    if (toReview) return <Text style={[styles.meta, { color: S.amber }]}>{t('home.proofSent', { name: partnerName })}</Text>;
     return (
       <View style={styles.metaRow}>
         <Text style={styles.meta}>{timeLabel}</Text>
@@ -196,6 +220,21 @@ function TaskRow({
   })();
 
   const trailing = (() => {
+    if (awaitingApproval) {
+      return (
+        <View style={[styles.checkbox, styles.checkboxAmber]}>
+          <ClockIcon size={13} />
+        </View>
+      );
+    }
+    if (toReview) {
+      return (
+        <Pressable onPress={onOpenProofs} hitSlop={8} style={({ pressed }) => [styles.reviewPill, pressed && { opacity: 0.7 }]}>
+          <CameraIcon size={12} color={S.amber} />
+          <Text style={styles.reviewText}>{t('home.review')}</Text>
+        </Pressable>
+      );
+    }
     if (k === 'pending-invite') {
       return (
         <View style={[styles.checkbox, styles.checkboxAmber]}>
@@ -238,7 +277,7 @@ function TaskRow({
     }
     return (
       <View style={[styles.checkbox, isDone ? styles.checkboxDone : styles.checkboxTodo]}>
-        {isDone && <CheckIcon size={13} />}
+        {isDone ? <CheckIcon size={13} /> : habit.requireProof ? <CameraIcon size={14} /> : null}
       </View>
     );
   })();
@@ -408,6 +447,16 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
   },
+  reviewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: S.amberSoft,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  reviewText: { fontSize: 12, fontWeight: '800', color: S.amber },
   pendingBadge: {
     backgroundColor: S.amberSoft,
     borderRadius: 999,

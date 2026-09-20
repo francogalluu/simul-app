@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import { useKindTranslation } from '@/lib/kind';
 import { useSettingsStore } from '@/store/settingsStore';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { haptic } from '@/lib/haptics';
@@ -15,7 +15,7 @@ import { PrimaryButton } from '@/components/FormControls';
  * built yet, so this just lays the groundwork for that later.
  */
 export default function NotificationsPromptScreen() {
-  const { t } = useTranslation();
+  const { t } = useKindTranslation();
   const setPrompted = useSettingsStore((s) => s.setNotificationsPrompted);
   const setPermission = useSettingsStore((s) => s.setNotificationsPermission);
   const [busy, setBusy] = useState(false);

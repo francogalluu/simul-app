@@ -40,9 +40,11 @@
     "household": "Hogar",
     "yourName": "Tu nombre",
     "partner": "Pareja",
+    "partner_friend": "Amigo/a",
     "partnerNotJoined": "Todavía no se unió",
     "inviteCode": "Código de invitación",
     "codeHint": "Tu pareja inicia sesión y después ingresa este código. Sirve para una sola persona.",
+    "codeHint_friend": "Tu amigo/a inicia sesión y después ingresa este código. Sirve para una sola persona.",
     "shareCode": "Compartir código",
     "shareMessage": "¡Sumate a Simul conmigo! Nuestro código es {{code}}",
     "newCode": "Nuevo código",
@@ -80,11 +82,14 @@
   "onboarding": {
     "title": "Bienvenido a Simul",
     "subtitle": "Simul es para dos. Creá un hogar o sumate al de tu pareja.",
+    "subtitle_friend": "Simul es para dos. Creá un hogar o sumate al de tu amigo/a.",
     "nameLabel": "Tu nombre",
     "namePlaceholder": "Cómo te dice tu pareja",
+    "namePlaceholder_friend": "Cómo te dice tu amigo/a",
     "create": "Crear un hogar",
     "createHint": "Vas a recibir un código para compartir.",
     "join": "Unirme a mi pareja",
+    "join_friend": "Unirme a mi amigo/a",
     "joinHint": "Usá el código de sus Ajustes.",
     "codeLabel": "Código de invitación",
     "codePlaceholder": "ABCD-2345",
@@ -101,8 +106,15 @@
     "openSettings": "Abrir Ajustes",
     "notifTitle": "No te pierdas nada",
     "notifBody": "Te avisamos de las invitaciones de tu pareja y, pronto, de recordatorios de hábitos. Podés cambiarlo cuando quieras en Ajustes.",
+    "notifBody_friend": "Te avisamos de las invitaciones de tu amigo/a y, pronto, de recordatorios de hábitos.",
     "notifEnable": "Activar notificaciones",
-    "notifSkip": "Ahora no"
+    "notifSkip": "Ahora no",
+    "kindLabel": "¿Con quién lo vas a usar?",
+    "kindCouple": "Pareja",
+    "kindFriend": "Amigo/a",
+    "kindHint_couple": "Hábitos de a dos, en pareja.",
+    "kindHint_friend": "Hábitos con un amigo/a, para motivarse.",
+    "joinKindNote": "Vas a usar Simul con quien te invitó."
   },
   "errors": {
     "syncTitle": "No se pudo guardar",
@@ -127,6 +139,7 @@
     "emptyTitle": "Todavía no hay hábitos",
     "emptyTitleReadOnly": "Nada por acá todavía",
     "emptyBody": "Sumá tu primer hábito: para vos, o para hacer en pareja.",
+    "emptyBody_friend": "Sumá tu primer hábito: para vos, o para hacer juntos.",
     "emptyBodyReadOnly": "No había hábitos ese día.",
     "addHabit": "Agregar un hábito",
     "waitingToAccept": "Esperando que {{name}} acepte",
@@ -135,7 +148,10 @@
     "day_one": "{{count}} día",
     "day_other": "{{count}} días",
     "mailbox": "Buzón",
-    "achievements": "Logros"
+    "achievements": "Logros",
+    "proofPending": "Esperando que {{name}} apruebe",
+    "review": "Revisar",
+    "proofSent": "{{name}} mandó una foto"
   },
   "times": {
     "Morning": "Mañana",
@@ -150,12 +166,15 @@
     "emptyAction": "Invitá a {{name}} a un hábito",
     "requests": "Pedidos para vos",
     "wantsTogetherTail": "quiere hacer esto en pareja",
+    "wantsTogetherTail_friend": "quiere hacer esto con vos",
     "everyDayBoth": "todos los días, los dos",
     "decline": "Rechazar",
     "accept": "Aceptar",
     "waitingOn": "Esperando a {{name}}",
     "sentWaiting": "Enviado • esperando que {{name}} acepte",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "review": "Para revisar",
+    "reviewItem": "{{name}} mandó la prueba de {{habit}}"
   },
   "achievements": {
     "title": "Logros",
@@ -173,11 +192,13 @@
       },
       "together-first": {
         "title": "Mejor juntos",
-        "description": "Completá un hábito compartido con tu pareja."
+        "description": "Completá un hábito compartido con tu pareja.",
+        "description_friend": "Completá un hábito compartido con tu amigo/a."
       },
       "inviter": {
         "title": "Buen equipo",
-        "description": "Invitá a tu pareja a un hábito compartido."
+        "description": "Invitá a tu pareja a un hábito compartido.",
+        "description_friend": "Invitá a tu amigo/a a un hábito compartido."
       },
       "streak-3": {
         "title": "En racha",
@@ -189,7 +210,8 @@
       },
       "together-7": {
         "title": "En sintonía",
-        "description": "Una racha de 7 días, en pareja."
+        "description": "Una racha de 7 días, en pareja.",
+        "description_friend": "Una racha de 7 días, juntos."
       },
       "habits-5": {
         "title": "Plato completo",
@@ -209,11 +231,13 @@
       },
       "together-30": {
         "title": "Inseparables",
-        "description": "Una racha de 30 días, en pareja."
+        "description": "Una racha de 30 días, en pareja.",
+        "description_friend": "Una racha de 30 días, juntos."
       },
       "perfect-week": {
         "title": "Semana perfecta",
-        "description": "Todos los días de una semana, hechos en pareja."
+        "description": "Todos los días de una semana, hechos en pareja.",
+        "description_friend": "Todos los días de una semana, hechos juntos."
       },
       "comeback": {
         "title": "La vuelta",
@@ -221,7 +245,8 @@
       },
       "together-14": {
         "title": "Dos semanas juntos",
-        "description": "Una racha de 14 días, en pareja."
+        "description": "Una racha de 14 días, en pareja.",
+        "description_friend": "Una racha de 14 días, juntos."
       }
     }
   },
@@ -262,7 +287,9 @@
     "inviteSent": "Invitación enviada 💌",
     "inviteSentJoined": "{{name}} va a encontrar \"{{habit}}\" en su buzón. Figura como pendiente en tu Inicio hasta que acepte.",
     "inviteSentWaiting": "\"{{habit}}\" va a estar esperando en el buzón de tu pareja apenas se una con tu código de invitación (Ajustes → Hogar).",
+    "inviteSentWaiting_friend": "\"{{habit}}\" va a estar esperando en el buzón de tu amigo/a apenas se una con tu código de invitación (Ajustes → Hogar).",
     "who_together": "En pareja con {{name}}",
+    "who_together_friend": "Con {{name}}",
     "who_you": "Solo vos",
     "who_partner": "Hábito de {{name}}",
     "presets": {
@@ -286,6 +313,33 @@
       "practiceLanguage": "Practicar un idioma",
       "callFamily": "Llamar a la familia",
       "journal": "Escribir el diario"
+    },
+    "pickIcon": "Elegir ícono",
+    "proof": {
+      "title": "Prueba con foto",
+      "hint": "Adjuntá una foto al completarlo. {{name}} la confirma para que cuente.",
+      "needsPartner": "Disponible cuando alguien se una para confirmar las fotos."
     }
+  },
+  "proof": {
+    "captureTitle": "Sumá tu prueba",
+    "captureMessage": "Este hábito necesita una foto para que {{name}} lo confirme.",
+    "takePhoto": "Sacar foto",
+    "chooseLibrary": "Elegir de la galería",
+    "permission": "Permití el acceso a la cámara en Ajustes para sacar una foto.",
+    "uploadError": "No se pudo subir la foto. Probá de nuevo.",
+    "undoTitle": "¿Sacar esta prueba?",
+    "undoBody": "Se borra la foto y el hábito vuelve a quedar sin hacer.",
+    "undo": "Sacar"
+  },
+  "proofs": {
+    "title": "Pruebas",
+    "empty": "Todavía no hay fotos. Aparecen acá cuando se completa el hábito.",
+    "pending": "Esperando aprobación",
+    "approved": "Aprobada",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "from": "De {{name}}",
+    "rejectHint": "Al rechazar se quita el completado y puede volver a intentarlo."
   }
 }
