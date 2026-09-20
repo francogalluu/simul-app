@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text } from '@/components/AppText';
 import {
   Gesture,
   GestureDetector,
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   useHabitsWidgetSync(me, habits, completions);
   const toggleCompletion = useTasksStore((s) => s.toggleCompletion);
 
+  const [uploadingProof, setUploadingProof] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [celebratingId, setCelebratingId] = useState<string | null>(null);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,11 +152,13 @@ export default function HomeScreen() {
   const completeWithProof = useCallback(
     async (habit: Habit, source: 'camera' | 'library') => {
       if (!userId) return;
-      const result = await pickProof(userId, habit.id, source);
+      // Reading and uploading a full-size photo can take a few seconds: show progress once it's picked.
+      const result = await pickProof(userId, habit.id, source, () => setUploadingProof(true)).finally(() => setUploadingProof(false));
       if ('cancelled' in result) return;
       if ('error' in result) {
         haptic.warning();
-        Alert.alert(t('errors.syncTitle'), result.error === 'permission' && source === 'camera' ? t('proof.permission') : t('proof.uploadError'));
+        const base = result.error === 'permission' && source === 'camera' ? t('proof.permission') : t('proof.uploadError');
+        Alert.alert(t('errors.syncTitle'), __DEV__ && result.detail ? `${base}\n\n${result.detail}` : base);
         return;
       }
       haptic.success();
@@ -277,11 +281,35 @@ export default function HomeScreen() {
         </GestureDetector>
       </AnimatedScrollView>
 
+      {uploadingProof && (
+        <View style={styles.uploading} pointerEvents="auto">
+          <View style={styles.uploadingBox}>
+            <ActivityIndicator color={S.accentDeep} />
+            <Text style={styles.uploadingText}>{t('proof.uploading')}</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  uploading: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(20, 18, 16, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: S.card,
+    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  uploadingText: { fontSize: 15, fontWeight: '700', color: S.ink900 },
   safe: {
     flex: 1,
     backgroundColor: S.bg,

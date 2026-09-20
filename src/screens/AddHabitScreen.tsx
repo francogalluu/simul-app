@@ -45,6 +45,9 @@ const PRESETS: Array<{ emoji: string; key: string; time: string }> = [
   { emoji: '✍️', key: 'journal', time: 'Evening' },
 ];
 
+// Narrower than the default so the four header buttons leave room for the title.
+const HEADER_ITEM_WIDTH = 34;
+
 const TIMES = ['Morning', 'Afternoon', 'Evening', 'All day'];
 
 // ─── Preset carousel ──────────────────────────────────────────────────────────
@@ -207,6 +210,7 @@ export default function AddHabitScreen() {
                 ? [
                     {
                       type: 'button' as const,
+                width: HEADER_ITEM_WIDTH,
                       label: t('proofs.title'),
                       icon: { type: 'sfSymbol' as const, name: 'photo.on.rectangle' as const },
                       onPress: () => navigation.navigate('HabitProofs', { habitId: editing.id }),
@@ -215,12 +219,14 @@ export default function AddHabitScreen() {
                 : []),
               {
                 type: 'button' as const,
+                width: HEADER_ITEM_WIDTH,
                 label: t('stats.title'),
                 icon: { type: 'sfSymbol' as const, name: 'chart.bar.xaxis' as const },
                 onPress: () => navigation.navigate('HabitStats', { habitId: editing.id }),
               },
               {
                 type: 'button' as const,
+                width: HEADER_ITEM_WIDTH,
                 label: isPendingInvite ? t('habit.cancelInvite') : t('habit.deleteHabit'),
                 icon: { type: 'sfSymbol' as const, name: 'trash' as const },
                 tintColor: S.danger,
@@ -230,6 +236,7 @@ export default function AddHabitScreen() {
           : []),
         {
           type: 'button' as const,
+                width: HEADER_ITEM_WIDTH,
           label: isEdit ? t('habit.save') : mode === 'shared' ? t('habit.invite', { name: partnerName }) : t('habit.add'),
           icon: { type: 'sfSymbol' as const, name: 'checkmark' as const },
           // Plain (not prominent) so it sits inside the same glass capsule as stats and trash.

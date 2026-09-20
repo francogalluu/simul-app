@@ -338,7 +338,9 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       // Realtime can't filter DELETE events (and doesn't apply RLS to them): they arrive
       // for every household but carry only the random primary key. Unknown ids are ignored.
       channel = supabase
-        .channel(`household:${householdId}`)
+        // A fresh name per start: removeChannel() is async, so reusing the topic right after stop() hands back
+        // the old, already-subscribed channel and `.on()` throws, leaving the app stuck on the loading screen.
+        .channel(`household:${householdId}:${gen}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'habits', filter }, onHabitChange)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'habits', filter }, onHabitChange)
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'habits' }, onHabitChange)

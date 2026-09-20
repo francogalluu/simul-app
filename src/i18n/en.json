@@ -330,7 +330,8 @@
     "uploadError": "Couldn't upload the photo. Try again.",
     "undoTitle": "Remove this proof?",
     "undoBody": "The photo is deleted and the habit goes back to not done.",
-    "undo": "Remove"
+    "undo": "Remove",
+    "uploading": "Uploading photo…"
   },
   "proofs": {
     "title": "Proof",

@@ -1,5 +1,5 @@
 /** Emoji a habit can use as its icon, shown in the icon picker page. */
-export const HABIT_ICONS = [
+const ALL = [
   '⭐', '💧', '🧘', '🚶', '📖', '🏋️', '🥗', '😴', '🙏', '🧹',
   '🚭', '🧴', '🚿', '🦷', '💊', '🏃', '📵', '💰', '🗣️', '📞',
   '✍️', '🍳', '🎸', '🧠', '☀️', '🌙', '🐶', '💻', '🎨', '🧺',
@@ -9,3 +9,6 @@ export const HABIT_ICONS = [
   '🏠', '🧑‍🍳', '🛒', '🚗', '✈️', '💼', '📅', '⏰', '💡', '❤️',
   '💌', '🎁', '🐱', '🌳', '🌊', '🔥', '⚡', '🏆', '🎉', '✨',
 ];
+
+// The same emoji can't appear twice (it is also the list key).
+export const HABIT_ICONS = Array.from(new Set(ALL));

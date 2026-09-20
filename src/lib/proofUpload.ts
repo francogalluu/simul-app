@@ -44,7 +44,7 @@ async function upload(userId: string, habitId: string, asset: ImagePicker.ImageP
 }
 
 /** Take or pick the photo for a completion and upload it. */
-export async function pickProof(userId: string, habitId: string, source: ProofSource): Promise<ProofPickResult> {
+export async function pickProof(userId: string, habitId: string, source: ProofSource, onPicked?: () => void): Promise<ProofPickResult> {
   try {
     if (source === 'camera') {
       let perm = await ImagePicker.getCameraPermissionsAsync();
@@ -52,11 +52,13 @@ export async function pickProof(userId: string, habitId: string, source: ProofSo
       if (!perm.granted) return { error: 'permission' };
       const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
       if (result.canceled || !result.assets[0]) return { cancelled: true };
+      onPicked?.();
       return upload(userId, habitId, result.assets[0]);
     }
     // The system photo picker needs no permission to launch.
     const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
     if (result.canceled || !result.assets[0]) return { cancelled: true };
+    onPicked?.();
     return upload(userId, habitId, result.assets[0]);
   } catch (e) {
     logError('proof.pick', e);

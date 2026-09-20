@@ -330,7 +330,8 @@
     "uploadError": "No se pudo subir la foto. Probá de nuevo.",
     "undoTitle": "¿Sacar esta prueba?",
     "undoBody": "Se borra la foto y el hábito vuelve a quedar sin hacer.",
-    "undo": "Sacar"
+    "undo": "Sacar",
+    "uploading": "Subiendo foto…"
   },
   "proofs": {
     "title": "Pruebas",

@@ -119,14 +119,6 @@ export default function RootNavigator() {
               headerShadowVisible: false,
               title: route.params?.habitId ? t('habit.editTitle') : t('habit.newTitle'),
               headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
-              unstable_headerLeftItems: () => [
-                {
-                  type: 'button',
-                  label: t('common.close'),
-                  icon: { type: 'sfSymbol', name: 'xmark' },
-                  onPress: () => navigation.goBack(),
-                },
-              ],
             })}
           />
           <Stack.Screen
