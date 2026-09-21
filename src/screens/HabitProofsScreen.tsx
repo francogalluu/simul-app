@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import type { RootStackParamList } from '@/navigation/types';
@@ -13,6 +15,9 @@ import { haptic } from '@/lib/haptics';
 import { ProofCard } from '@/components/ProofCard';
 import { S, SCREEN_PADDING } from '@/lib/simulTheme';
 
+const MIN_SHEET = 0.3;
+const BOTTOM_PADDING = 12;
+
 type Entry = { date: string; person: Person; proof: Proof };
 
 // The photos attached to one habit's completions, newest first. Presented as a native formSheet
@@ -20,6 +25,9 @@ type Entry = { date: string; person: Person; proof: Proof };
 export default function HabitProofsScreen() {
   const { t } = useKindTranslation();
   const navigation = useNavigation();
+  const headerHeight = useHeaderHeight();
+  const { height: screenHeight } = useWindowDimensions();
+  const bottomInset = useSafeAreaInsets().bottom;
   const { params } = useRoute<RouteProp<RootStackParamList, 'HabitProofs'>>();
   const me = useMe();
   const people = usePeople();
@@ -44,12 +52,28 @@ export default function HabitProofsScreen() {
     return out.sort((a, b) => b.date.localeCompare(a.date) || (a.person === me ? 1 : -1));
   }, [proofs, params.habitId, me]);
 
+  // Size the sheet to its content: a fraction of the screen from the measured content height, at least
+  // a small sheet, at most full screen (then the list scrolls).
+  const fitToContent = React.useCallback(
+    (contentHeight: number) => {
+      const wanted = (headerHeight + contentHeight + bottomInset) / screenHeight;
+      const fraction = Math.min(1, Math.max(MIN_SHEET, Math.round(wanted * 100) / 100));
+      navigation.setOptions({ sheetAllowedDetents: fraction >= 1 ? [1] : [fraction, 1] });
+    },
+    [navigation, headerHeight, screenHeight, bottomInset],
+  );
+
   if (!habit) return null;
   const locale = getDateLocale();
   const hasPendingForMe = entries.some((e) => e.person !== me && e.proof.status === 'pending');
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      onContentSizeChange={(_, contentHeight) => fitToContent(contentHeight)}
+    >
       {entries.length === 0 ? (
         <Text style={styles.empty}>{t('proofs.empty')}</Text>
       ) : (
@@ -74,7 +98,7 @@ export default function HabitProofsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: S.bg },
-  content: { paddingHorizontal: SCREEN_PADDING, paddingBottom: 32 },
+  content: { paddingHorizontal: SCREEN_PADDING, paddingBottom: BOTTOM_PADDING },
   list: { gap: 16 },
   empty: { marginTop: 40, fontSize: 14, lineHeight: 20, color: S.tertiary, textAlign: 'center' },
   hint: { fontSize: 12, color: S.tertiary, textAlign: 'center', marginTop: 4 },
