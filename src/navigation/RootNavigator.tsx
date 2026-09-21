@@ -119,10 +119,6 @@ export default function RootNavigator() {
               headerShadowVisible: false,
               title: route.params?.habitId ? t('habit.editTitle') : t('habit.newTitle'),
               headerTitleStyle: { fontFamily: fonts.bold, color: S.ink900 },
-              // Line the title up with the cards below (a bare native title sits a few points to the left of them).
-              headerTitle: ({ children }) => (
-                <Text style={{ fontFamily: fonts.bold, fontSize: 17, color: S.ink900, marginLeft: 6 }}>{children}</Text>
-              ),
             })}
           />
           <Stack.Screen
