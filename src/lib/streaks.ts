@@ -2,11 +2,11 @@ import { addDays, today } from './dates';
 import { involves, type Person } from './people';
 import type { Completions, Habit } from '@/store/tasksStore';
 
-import { isScheduledOn } from './weekdays';
+import { isPausedOn, isScheduledOn } from './weekdays';
 
-/** A habit is due on a day once it has started, is accepted, and repeats on that weekday. */
+/** A habit is due on a day once it has started, is accepted, repeats on that weekday and isn't paused. */
 export const isHabitActiveOn = (h: Habit, date: string) =>
-  h.status === 'active' && h.createdAt <= date && isScheduledOn(h.days, date);
+  h.status === 'active' && h.createdAt <= date && isScheduledOn(h.days, date) && !isPausedOn(h.pauses, date);
 
 /** 'rest' = nothing was due that day, so it neither counts toward a streak nor breaks it. */
 export type DayState = 'rest' | 'done' | 'open';

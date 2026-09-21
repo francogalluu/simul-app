@@ -4,7 +4,7 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 import { supabase, toAppError, logError } from '@/lib/supabase';
 import { showSyncError } from '@/lib/errors';
 import { today } from '@/lib/dates';
-import { normalizeDays } from '@/lib/weekdays';
+import { normalizeDays, normalizePauses, type Pause } from '@/lib/weekdays';
 import type { Owner, Person } from '@/lib/people';
 import type { Member } from './householdStore';
 
@@ -36,6 +36,8 @@ export interface Habit {
   requireProof: boolean;
   /** Weekdays it repeats on, as a bitmask (see lib/weekdays). Every day unless the person picked some. */
   days: number;
+  /** Periods the habit is paused (see lib/weekdays). */
+  pauses: Pause[];
 }
 
 /** completions[date][habitId] = which people completed it that day. A completion whose proof is still pending doesn't count yet. */
@@ -80,6 +82,7 @@ interface HabitRow {
   created_at: string;
   require_proof: boolean;
   days_of_week: number;
+  pauses: Pause[] | null;
 }
 
 interface CompletionRow {
@@ -103,7 +106,7 @@ interface TasksState {
   stop: () => void;
 
   addHabit: (draft: HabitDraft) => string;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'requireProof' | 'days'>>) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'requireProof' | 'days' | 'pauses'>>) => void;
   removeHabit: (id: string) => void;
   acceptInvite: (id: string) => void;
   declineInvite: (id: string) => void;
@@ -115,7 +118,7 @@ interface TasksState {
 
 export const MAX_HABIT_NAME = 80;
 const TIMES: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'All day'];
-const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, require_proof, days_of_week';
+const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, require_proof, days_of_week, pauses';
 const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path, proof_status';
 const PAGE = 1000;
 
@@ -156,6 +159,7 @@ function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs'> {
       requestedBy: row.requested_by ? slots[row.requested_by] : undefined,
       requireProof: Boolean(row.require_proof),
       days: normalizeDays(row.days_of_week),
+      pauses: normalizePauses(row.pauses),
     });
   }
   const completions: Completions = {};
@@ -403,6 +407,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         created_at: new Date().toISOString(),
         require_proof: Boolean(draft.requireProof),
         days_of_week: normalizeDays(draft.days),
+        pauses: [],
       };
       habitRows[row.id] = row;
       publish();
@@ -428,12 +433,13 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const before = habitRows[id];
       if (!before) return;
       const gen = generation;
-      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'require_proof' | 'days_of_week'>> = {};
+      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'require_proof' | 'days_of_week' | 'pauses'>> = {};
       if (patch.name != null) update.name = patch.name.trim().slice(0, MAX_HABIT_NAME);
       if (patch.icon != null) update.icon = patch.icon.slice(0, 16);
       if (patch.time != null && TIMES.includes(patch.time as TimeOfDay)) update.time_of_day = patch.time;
       if (patch.requireProof != null) update.require_proof = patch.requireProof;
       if (patch.days != null) update.days_of_week = normalizeDays(patch.days);
+      if (patch.pauses != null) update.pauses = normalizePauses(patch.pauses);
       habitRows[id] = { ...before, ...update };
       publish();
 

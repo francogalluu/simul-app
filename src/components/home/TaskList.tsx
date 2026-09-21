@@ -7,7 +7,7 @@ import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
-import { isScheduledOn, summarizeDays } from '@/lib/weekdays';
+import { isPausedOn, isScheduledOn, summarizeDays } from '@/lib/weekdays';
 import { useSettingsStore } from '@/store/settingsStore';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit, Proof, Proofs } from '@/store/tasksStore';
@@ -110,7 +110,7 @@ export function TaskList({
   // Habits that exist but aren't due on this weekday. They'd otherwise vanish for the day and couldn't
   // be edited until their own day comes around, so they get a muted section at the bottom.
   const offToday = habits.filter(
-    (h) => h.status === 'active' && h.createdAt <= date && !isScheduledOn(h.days, date) && (h.owner === 'both' || h.owner === me),
+    (h) => h.status === 'active' && h.createdAt <= date && (!isScheduledOn(h.days, date) || isPausedOn(h.pauses, date)) && (h.owner === 'both' || h.owner === me),
   );
   const weekStartsOn = useSettingsStore((st) => st.weekStartsOn);
   const daysLabel = (mask: number) => {
@@ -138,7 +138,7 @@ export function TaskList({
               </View>
               <View style={styles.textWrap}>
                 <Text style={[styles.name, { color: S.muted }]} numberOfLines={1}>{habit.name}</Text>
-                <Text style={styles.meta}>{daysLabel(habit.days)}</Text>
+                <Text style={styles.meta}>{isPausedOn(habit.pauses, date) ? t('home.paused') : daysLabel(habit.days)}</Text>
               </View>
             </Pressable>
           ))}

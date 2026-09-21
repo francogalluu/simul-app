@@ -1,6 +1,6 @@
 import { addDays, today } from './dates';
 import { isDoneBy } from './streaks';
-import { isScheduledOn } from './weekdays';
+import { isPausedOn, isScheduledOn } from './weekdays';
 import type { Completions, Habit } from '@/store/tasksStore';
 
 /** Longest history we walk back through, in days. */
@@ -50,7 +50,7 @@ export function computeHabitStats(habit: Habit, completions: Completions, days =
   let total = 0;
   for (let d = start, i = 0; d <= t && i <= MAX_HISTORY + days; d = addDays(d, 1), i += 1) {
     const beforeStart = d < habit.createdAt;
-    const rest = !beforeStart && !isScheduledOn(habit.days, d);
+    const rest = !beforeStart && (!isScheduledOn(habit.days, d) || isPausedOn(habit.pauses, d));
     const done = !beforeStart && !rest && habitDoneOn(habit, completions, d);
     // A day the habit isn't due keeps the run going instead of ending it.
     run = done ? run + 1 : rest ? run : 0;

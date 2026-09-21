@@ -155,7 +155,8 @@
     "proofSent": "{{name}} mandó una foto",
     "notToday": "Hoy no toca",
     "restTitle": "Hoy no hay nada por hacer",
-    "restBody": "Disfrutá el día libre. Tus hábitos vuelven en sus días."
+    "restBody": "Disfrutá el día libre. Tus hábitos vuelven en sus días.",
+    "paused": "Pausado"
   },
   "times": {
     "Morning": "Mañana",
@@ -267,7 +268,7 @@
   },
   "habit": {
     "newTitle": "Nuevo hábito",
-    "editTitle": "Editar hábito",
+    "editTitle": "Editar",
     "who": "Para quién es",
     "justMe": "Solo yo",
     "withPartner": "Con {{name}}",

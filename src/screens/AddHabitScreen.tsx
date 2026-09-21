@@ -20,8 +20,8 @@ import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { NativeDaySelector, NativeSegmented, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
 import { useSettingsStore } from '@/store/settingsStore';
-import { getDateLocale } from '@/lib/dates';
-import { EVERY_DAY, summarizeDays, toggleDay, weekdayOrder } from '@/lib/weekdays';
+import { addDays, getDateLocale, today } from '@/lib/dates';
+import { EVERY_DAY, endPause, isPausedOn, startPause, summarizeDays, toggleDay, weekdayOrder } from '@/lib/weekdays';
 import { i18n } from '@/i18n';
 
 type Mode = 'single' | 'shared';
@@ -50,7 +50,7 @@ const PRESETS: Array<{ emoji: string; key: string; time: string }> = [
 ];
 
 // Narrower than the default so the four header buttons leave room for the title.
-const HEADER_ITEM_WIDTH = 34;
+const HEADER_ITEM_WIDTH = 30;
 
 const TIMES = ['Morning', 'Afternoon', 'Evening', 'All day'];
 
@@ -226,57 +226,71 @@ export default function AddHabitScreen() {
     if (!canManage) navigation.goBack();
   }, [canManage, navigation]);
 
-  // Native buttons in the header, top right: a tick to save (or add / invite), and a trash to
-  // delete when editing.
+  // Pause / resume applies right away (like delete), it isn't part of "save".
+  const paused = editing ? isPausedOn(editing.pauses, today()) : false;
+  const togglePause = () => {
+    if (!editing) return;
+    haptic.medium();
+    const now = today();
+    updateHabit(editing.id, {
+      pauses: paused ? endPause(editing.pauses, now, addDays(now, -1)) : startPause(editing.pauses, now),
+    });
+  };
+
+  // Native buttons in the header, top right, all in one glass capsule: photos (when the habit needs
+  // proof), stats, pause / resume, delete and the save tick (or add / invite for a new habit).
   useLayoutEffect(() => {
+    const item = (extra: object) => ({ type: 'button' as const, width: HEADER_ITEM_WIDTH, ...extra });
     navigation.setOptions({
       unstable_headerRightItems: () => [
         ...(isEdit && editing
           ? [
               ...(editing.requireProof
                 ? [
-                    {
-                      type: 'button' as const,
-                width: HEADER_ITEM_WIDTH,
+                    item({
                       label: t('proofs.title'),
                       icon: { type: 'sfSymbol' as const, name: 'photo.on.rectangle' as const },
                       onPress: () => navigation.navigate('HabitProofs', { habitId: editing.id }),
-                    },
+                    }),
                   ]
                 : []),
-              {
-                type: 'button' as const,
-                width: HEADER_ITEM_WIDTH,
+              item({
                 label: t('stats.title'),
                 icon: { type: 'sfSymbol' as const, name: 'chart.bar.xaxis' as const },
                 onPress: () => navigation.navigate('HabitStats', { habitId: editing.id }),
-              },
-              {
-                type: 'button' as const,
-                width: HEADER_ITEM_WIDTH,
+              }),
+              ...(isPendingInvite
+                ? []
+                : [
+                    item({
+                      label: paused ? t('common.resume') : t('common.pause'),
+                      icon: { type: 'sfSymbol' as const, name: paused ? ('play.fill' as const) : ('pause.fill' as const) },
+                      tintColor: S.amber,
+                      onPress: togglePause,
+                    }),
+                  ]),
+              item({
                 label: isPendingInvite ? t('habit.cancelInvite') : t('habit.deleteHabit'),
                 icon: { type: 'sfSymbol' as const, name: 'trash' as const },
                 tintColor: S.danger,
                 onPress: handleDelete,
-              },
+              }),
             ]
           : []),
-        {
-          type: 'button' as const,
-                width: HEADER_ITEM_WIDTH,
+        item({
           label: isEdit ? t('habit.save') : mode === 'shared' ? t('habit.invite', { name: partnerName }) : t('habit.add'),
           icon: { type: 'sfSymbol' as const, name: 'checkmark' as const },
-          // Plain (not prominent) so it sits inside the same glass capsule as stats and trash.
+          // Plain (not prominent) so it sits inside the same glass capsule as the other buttons.
           variant: 'plain' as const,
           tintColor: S.accentDeep,
           disabled: !canSubmit,
           onPress: handleSubmit,
-        },
+        }),
       ],
     });
-    // handleDelete/handleSubmit only depend on the values listed here.
+    // handleDelete/handleSubmit/togglePause only depend on the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, editing?.id, editing?.requireProof]);
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, paused, editing?.id, editing?.requireProof]);
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
