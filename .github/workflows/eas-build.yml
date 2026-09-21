@@ -1,0 +1,70 @@
+name: EAS Build (iOS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "EAS build profile"
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - preview
+          - development
+      submit:
+        description: "Submit the finished build to TestFlight"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build on EAS
+        run: eas build --platform ios --profile ${{ inputs.profile }} --non-interactive --no-wait=false
+
+      - name: Configure App Store Connect API key for submit
+        if: ${{ inputs.submit }}
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
+        run: |
+          echo "$ASC_API_KEY_P8" > AuthKey.p8
+          node -e "
+            const fs = require('fs');
+            const eas = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+            eas.submit.production.ios.ascApiKeyPath = './AuthKey.p8';
+            eas.submit.production.ios.ascApiKeyId = process.env.ASC_API_KEY_ID;
+            eas.submit.production.ios.ascApiKeyIssuerId = process.env.ASC_API_KEY_ISSUER_ID;
+            delete eas.submit.production.ios.appleId;
+            fs.writeFileSync('eas.json', JSON.stringify(eas, null, 2));
+          "
+
+      - name: Submit to TestFlight
+        if: ${{ inputs.submit }}
+        run: eas submit --platform ios --profile production --latest --non-interactive
+
+      - name: Clean up API key
+        if: ${{ always() && inputs.submit }}
+        run: rm -f AuthKey.p8
