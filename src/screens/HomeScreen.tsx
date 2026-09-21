@@ -231,6 +231,8 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <PullRefreshIndicator refreshing={refreshing} pullDistance={pullDistance} />
       <AnimatedScrollView
+        // Lets iOS add the floating tab bar's height under the last habit (as on the other tabs).
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         onScroll={onScroll}
