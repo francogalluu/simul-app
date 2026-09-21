@@ -4,9 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -25,6 +23,7 @@
     "date-fns": "^4.1.0",
     "emoji-datasource": "^16.0.0",
     "expo": "^57.0.0",
+    "expo-apple-authentication": "~57.0.2",
     "expo-constants": "~57.0.18",
     "expo-crypto": "~57.0.3",
     "expo-font": "~57.0.4",

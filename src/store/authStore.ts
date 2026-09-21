@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, logError } from '@/lib/supabase';
 
@@ -17,9 +19,9 @@ interface AuthState {
   init: () => () => void;
   sendCode: (email: string) => Promise<{ error?: 'rate_limited' | 'invalid_email' | 'network' | 'unknown' }>;
   verifyCode: (email: string, code: string) => Promise<{ error?: 'invalid_code' | 'network' | 'unknown' }>;
+  /** Native Sign in with Apple. `canceled` means the person dismissed the sheet — not an error to show. */
+  signInWithApple: () => Promise<{ error?: 'canceled' | 'network' | 'unknown' }>;
   signOut: () => Promise<void>;
-  /** __DEV__ only: skips the email round-trip against the two seeded test accounts. */
-  devSignIn: (which: 'a' | 'b') => Promise<{ error?: 'unknown' }>;
 }
 
 // iOS keeps Keychain items after an uninstall. Without this, reinstalling the
@@ -44,19 +46,6 @@ const CODE_RE = /^[A-Za-z0-9-]{8,128}$/;
 const handledCodes = new Set<string>();
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-// Two persistent test accounts seeded directly in the database (see BACKLOG.md),
-// used only through this __DEV__-gated path. This branch — and the password below
-// with it — is dead code in a production/release build, same as any other
-// `if (__DEV__)` in React Native: Metro replaces __DEV__ with a literal and the
-// minifier drops the unreachable branch, so it never ships in the app binary
-// real users install. It still goes through the normal signInWithPassword() call,
-// so no auth or RLS check is bypassed — it only skips the email step.
-const DEV_ACCOUNTS = {
-  a: 'dev-a@simul.test',
-  b: 'dev-b@simul.test',
-} as const;
-const DEV_PASSWORD = 'dev-only-not-a-real-password-8823';
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   status: 'loading',
@@ -158,20 +147,36 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     return { error: 'unknown' };
   },
 
+  signInWithApple: async () => {
+    try {
+      // Apple embeds the SHA-256 of the nonce in the identity token; Supabase
+      // re-hashes the raw one we hand it and compares, which defeats token replay.
+      const rawNonce = Array.from(Crypto.getRandomBytes(32), (b) => b.toString(16).padStart(2, '0')).join('');
+      const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL],
+        nonce: hashedNonce,
+      });
+      if (!credential.identityToken) return { error: 'unknown' };
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+      if (!error) return {};
+      logError('auth.apple', error);
+      return { error: error.name === 'AuthRetryableFetchError' ? 'network' : 'unknown' };
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') return { error: 'canceled' };
+      logError('auth.apple', e);
+      return { error: 'unknown' };
+    }
+  },
+
   signOut: async () => {
     // Local scope: signs out this device only. The listener above flips status,
     // and the data stores reset themselves when the session goes away.
     const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) logError('auth.signOut', error);
-  },
-
-  devSignIn: async (which) => {
-    if (!__DEV__) return { error: 'unknown' };
-    const { error } = await supabase.auth.signInWithPassword({ email: DEV_ACCOUNTS[which], password: DEV_PASSWORD });
-    if (error) {
-      logError('auth.devSignIn', error);
-      return { error: 'unknown' };
-    }
-    return {};
   },
 }));

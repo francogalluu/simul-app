@@ -43,7 +43,6 @@ export function CalendarCard({
       weekDates.map((date) => {
         const d = new Date(date + 'T00:00:00');
         return {
-          date,
           label: format(d, 'EEEEE', { locale }),
           num: d.getDate(),
           isSelected: date === selectedDate,

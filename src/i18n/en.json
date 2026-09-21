@@ -53,7 +53,7 @@
     "account": "Account",
     "email": "Email",
     "signOut": "Sign out",
-    "signOutMessage": "You can sign back in anytime with your email.",
+    "signOutMessage": "You can sign back in anytime.",
     "leave": "Leave household",
     "leaveMessage": "Your personal habits and check-ins will be deleted. Shared habits stay with your partner.",
     "deleteAccount": "Delete account",
@@ -65,6 +65,7 @@
   },
   "auth": {
     "tagline": "Build habits together.",
+    "or": "or",
     "emailLabel": "Email",
     "emailPlaceholder": "you@example.com",
     "sendCode": "Continue",

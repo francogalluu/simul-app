@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View, TextInput, Pressable, ScrollView, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, TextInput, Pressable, ScrollView, FlatList, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
 import { useKindTranslation } from '@/lib/kind';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -128,7 +128,7 @@ export default function AddHabitScreen() {
   });
 
   const scrollX = useSharedValue(MIDDLE_START * SNAP);
-  const carouselRef = React.useRef<{ scrollToOffset: (p: { offset: number; animated?: boolean }) => void }>(null);
+  const carouselRef = React.useRef<FlatList>(null);
   const onCarouselScroll = useAnimatedScrollHandler({ onScroll: (e) => { scrollX.value = e.contentOffset.x; } });
   useEffect(() => {
     carouselRef.current?.scrollToOffset({ offset: MIDDLE_START * SNAP, animated: false });

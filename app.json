@@ -4,39 +4,24 @@
     "slug": "simul",
     "scheme": "simul",
     "version": "1.0.0",
+    "platforms": [
+      "ios"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/Splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.simul.app",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "package": "com.simul.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#FFFFFF"
-      }
+      },
+      "usesAppleSignIn": true
     },
     "plugins": [
       "expo-font",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#6bb290"
-        }
-      ],
+      "expo-notifications",
       [
         "expo-image-picker",
         {
@@ -46,8 +31,17 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-localization",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/Splash.png",
+          "imageWidth": 170,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F4ED"
+        }
+      ],
       "expo-status-bar",
+      "expo-apple-authentication",
       "expo-secure-store",
       "./plugins/withUIScene",
       [

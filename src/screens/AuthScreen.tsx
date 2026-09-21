@@ -3,8 +3,8 @@ import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 're
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '@/store/authStore';
-import { DevSignInRow } from '@/components/DevSignInRow';
 import { MeshBackground } from '@/components/MeshBackground';
 import { errorMessage } from '@/lib/errors';
 import { haptic } from '@/lib/haptics';
@@ -19,6 +19,7 @@ export default function AuthScreen() {
   const { t } = useTranslation();
   const sendCode = useAuthStore((s) => s.sendCode);
   const verifyCode = useAuthStore((s) => s.verifyCode);
+  const signInWithApple = useAuthStore((s) => s.signInWithApple);
   const linkError = useAuthStore((s) => s.linkError);
   const clearLinkError = useAuthStore((s) => s.clearLinkError);
 
@@ -28,7 +29,13 @@ export default function AuthScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const codeRef = useRef<NativeTextFieldHandle>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -51,6 +58,19 @@ export default function AuthScreen() {
     setStep('code');
     setCooldown(RESEND_SECONDS);
     setTimeout(() => codeRef.current?.focus(), 250);
+  };
+
+  const appleSignIn = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await signInWithApple();
+    // On success the auth listener swaps the whole navigator, so don't touch state.
+    if (res.error) {
+      setBusy(false);
+      if (res.error === 'canceled') return;
+      haptic.warning();
+      setError(errorMessage(res.error));
+    }
   };
 
   const submitCode = async () => {
@@ -77,6 +97,18 @@ export default function AuthScreen() {
 
           {step === 'email' ? (
             <View style={styles.form}>
+              {appleAvailable ? (
+                <>
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={14}
+                    style={[styles.appleButton, busy && { opacity: 0.5 }]}
+                    onPress={busy ? () => {} : appleSignIn}
+                  />
+                  <Text style={styles.or}>{t('auth.or')}</Text>
+                </>
+              ) : null}
               <TextField
                 label={t('auth.emailLabel')}
                 value={email}
@@ -94,7 +126,6 @@ export default function AuthScreen() {
               <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
               <PrimaryButton label={t('auth.sendCode')} onPress={requestCode} loading={busy} disabled={!email.trim()} />
               <Text style={styles.hint}>{t('auth.noPasswords')}</Text>
-              <DevSignInRow />
             </View>
           ) : (
             <View style={styles.form}>
@@ -167,6 +198,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
     color: S.ink600,
+    textAlign: 'center',
+  },
+  appleButton: {
+    height: 50,
+    width: '100%',
+  },
+  or: {
+    fontSize: 13,
+    color: S.tertiary,
     textAlign: 'center',
   },
   hint: {
