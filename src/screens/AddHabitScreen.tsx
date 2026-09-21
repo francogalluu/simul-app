@@ -51,6 +51,10 @@ const PRESETS: Array<{ emoji: string; key: string; time: string }> = [
 
 // Narrower than the default so the four header buttons leave room for the title.
 const HEADER_ITEM_WIDTH = 30;
+// Measured: each native header button takes about this much room in the glass capsule.
+const HEADER_SLOT = 51;
+const HEADER_SIDE_MARGIN = 24;
+const TITLE_LEFT = 29;
 
 const TIMES = ['Morning', 'Afternoon', 'Evening', 'All day'];
 
@@ -241,7 +245,22 @@ export default function AddHabitScreen() {
   // proof), stats, pause / resume, delete and the save tick (or add / invite for a new habit).
   useLayoutEffect(() => {
     const item = (extra: object) => ({ type: 'button' as const, width: HEADER_ITEM_WIDTH, ...extra });
+    // Number of buttons in the capsule, to know how much room is left for the title.
+    const buttons = isEdit && editing ? 3 + (editing.requireProof ? 1 : 0) + (isPendingInvite ? -1 : 0) + 1 : 1;
+    const titleRoom = screenWidth - HEADER_SIDE_MARGIN - buttons * HEADER_SLOT - TITLE_LEFT - 8;
     navigation.setOptions({
+      // Editing: a bigger title, right-aligned so it sits next to the buttons.
+      ...(isEdit
+        ? {
+            headerTitle: () => (
+              <View style={{ width: Math.max(titleRoom, 60), marginLeft: TITLE_LEFT - 24, alignItems: 'flex-end' }}>
+                <Text style={{ fontFamily: fonts.bold, fontSize: buttons >= 5 ? 20 : 24, color: S.ink900 }} numberOfLines={1}>
+                  {t('habit.editTitle')}
+                </Text>
+              </View>
+            ),
+          }
+        : {}),
       unstable_headerRightItems: () => [
         ...(isEdit && editing
           ? [
@@ -290,7 +309,7 @@ export default function AddHabitScreen() {
     });
     // handleDelete/handleSubmit/togglePause only depend on the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, paused, editing?.id, editing?.requireProof]);
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, paused, screenWidth, editing?.id, editing?.requireProof]);
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
