@@ -249,12 +249,12 @@ export default function AddHabitScreen() {
     const buttons = isEdit && editing ? 3 + (editing.requireProof ? 1 : 0) + (isPendingInvite ? -1 : 0) + 1 : 1;
     const titleRoom = screenWidth - HEADER_SIDE_MARGIN - buttons * HEADER_SLOT - TITLE_LEFT - 8;
     navigation.setOptions({
-      // Editing: a bigger title, right-aligned so it sits next to the buttons.
+      // Editing: a bigger title, left-aligned with the edge of the white cards below.
       ...(isEdit
         ? {
             headerTitle: () => (
-              <View style={{ width: Math.max(titleRoom, 60), marginLeft: TITLE_LEFT - 24, alignItems: 'flex-end' }}>
-                <Text style={{ fontFamily: fonts.bold, fontSize: buttons >= 5 ? 20 : 24, color: S.ink900 }} numberOfLines={1}>
+              <View style={{ width: Math.max(titleRoom, 60), marginLeft: TITLE_LEFT - 24, alignItems: 'flex-start' }}>
+                <Text style={{ fontFamily: fonts.bold, fontSize: 24, color: S.ink900 }} numberOfLines={1}>
                   {t('habit.editTitle')}
                 </Text>
               </View>
