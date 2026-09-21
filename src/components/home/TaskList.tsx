@@ -7,6 +7,8 @@ import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
 import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
+import { isScheduledOn, summarizeDays } from '@/lib/weekdays';
+import { useSettingsStore } from '@/store/settingsStore';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit, Proof, Proofs } from '@/store/tasksStore';
 import { EmptyState } from '@/components/EmptyState';
@@ -105,6 +107,59 @@ export function TaskList({
     { key: 'partner', label: people[partner].name, people: [partner], items: visible.filter((h) => h.owner === partner) },
   ].filter((s) => s.items.length > 0);
 
+  // Habits that exist but aren't due on this weekday. They'd otherwise vanish for the day and couldn't
+  // be edited until their own day comes around, so they get a muted section at the bottom.
+  const offToday = habits.filter(
+    (h) => h.status === 'active' && h.createdAt <= date && !isScheduledOn(h.days, date) && (h.owner === 'both' || h.owner === me),
+  );
+  const weekStartsOn = useSettingsStore((st) => st.weekStartsOn);
+  const daysLabel = (mask: number) => {
+    const summary = summarizeDays(mask, weekStartsOn);
+    return summary.kind === 'custom' ? summary.text : t(`habit.repeat.${summary.kind}`);
+  };
+  const restCard =
+    offToday.length > 0 ? (
+      <View>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>{t('home.notToday')}</Text>
+          <Text style={styles.sectionCount}>{offToday.length}</Text>
+        </View>
+        <View style={[styles.sectionCard, styles.restCard]}>
+          {offToday.map((habit) => (
+            <Pressable
+              key={habit.id}
+              onLongPress={() => onEdit(habit)}
+              onPress={() => onEdit(habit)}
+              delayLongPress={320}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            >
+              <View style={styles.iconWrap}>
+                <Text style={styles.iconText}>{habit.icon}</Text>
+              </View>
+              <View style={styles.textWrap}>
+                <Text style={[styles.name, { color: S.muted }]} numberOfLines={1}>{habit.name}</Text>
+                <Text style={styles.meta}>{daysLabel(habit.days)}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    ) : null;
+
+  if (sections.length === 0 && offToday.length > 0) {
+    // Habits exist, just none due today: say so instead of pretending there are none.
+    return (
+      <View style={styles.wrap}>
+        <EmptyState
+          icon="🌿"
+          title={t('home.restTitle')}
+          body={t('home.restBody')}
+        />
+        {restCard}
+      </View>
+    );
+  }
+
   if (sections.length === 0) {
     return (
       <EmptyState
@@ -160,6 +215,7 @@ export function TaskList({
           </View>
         );
       })}
+      {restCard}
     </View>
   );
 }
@@ -457,6 +513,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   reviewText: { fontSize: 12, fontWeight: '800', color: S.amber },
+  restCard: { opacity: 0.75 },
   pendingBadge: {
     backgroundColor: S.amberSoft,
     borderRadius: 999,

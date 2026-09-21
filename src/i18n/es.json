@@ -152,7 +152,10 @@
     "achievements": "Logros",
     "proofPending": "Esperando que {{name}} apruebe",
     "review": "Revisar",
-    "proofSent": "{{name}} mandó una foto"
+    "proofSent": "{{name}} mandó una foto",
+    "notToday": "Hoy no toca",
+    "restTitle": "Hoy no hay nada por hacer",
+    "restBody": "Disfrutá el día libre. Tus hábitos vuelven en sus días."
   },
   "times": {
     "Morning": "Mañana",
@@ -271,6 +274,12 @@
     "quickPick": "Sugerencias",
     "details": "Detalles",
     "when": "Cuándo",
+    "repeat": {
+      "title": "Repetir",
+      "every": "Todos los días",
+      "weekdays": "Lunes a viernes",
+      "weekend": "Fines de semana"
+    },
     "name": "Nombre",
     "icon": "Ícono",
     "namePlaceholder": "ej. Estirar por la mañana",

@@ -1,8 +1,9 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Button, ColorPicker, ConfirmationDialog, Gauge, Host, Picker, ProgressView, ShareLink, Text as SwiftText, TextField, Toggle, useNativeState, type TextFieldRef } from '@expo/ui/swift-ui';
-import { autocorrectionDisabled, buttonStyle, controlSize, disabled as disabledModifier, font, foregroundStyle, frame, gaugeStyle, kerning, keyboardType as keyboardTypeModifier, labelsHidden, lineLimit, multilineTextAlignment, onSubmit, pickerStyle, scaleEffect, submitLabel, tag, textContentType, textFieldStyle, textInputAutocapitalization, tint } from '@expo/ui/swift-ui/modifiers';
+import { Button, ColorPicker, ConfirmationDialog, Gauge, HStack, Host, Picker, ProgressView, ShareLink, Spacer, Text as SwiftText, TextField, Toggle, useNativeState, type TextFieldRef } from '@expo/ui/swift-ui';
+import { accessibilityLabel, autocorrectionDisabled, buttonBorderShape, buttonStyle, controlSize, disabled as disabledModifier, font, foregroundStyle, frame, gaugeStyle, kerning, keyboardType as keyboardTypeModifier, labelsHidden, lineLimit, multilineTextAlignment, onSubmit, pickerStyle, scaleEffect, submitLabel, tag, textContentType, textFieldStyle, textInputAutocapitalization, tint, toggleStyle } from '@expo/ui/swift-ui/modifiers';
 import { S } from '@/lib/simulTheme';
+import { hasDay } from '@/lib/weekdays';
 
 // Real SwiftUI controls (via @expo/ui), tinted with the app's greens.
 
@@ -10,6 +11,48 @@ export function NativeToggle({ value, onChange, disabled }: { value: boolean; on
   return (
     <Host matchContents={{ horizontal: true }} style={styles.control} seedColor={S.accent}>
       <Toggle isOn={value} onIsOnChange={onChange} modifiers={disabled ? [disabledModifier(true)] : undefined} />
+    </Host>
+  );
+}
+
+/**
+ * One row of seven native toggle buttons for picking weekdays. `days` is the Date.getDay()
+ * bitmask (see lib/weekdays); `order` lists the weekday numbers left to right.
+ */
+export function NativeDaySelector({
+  days,
+  order,
+  labels,
+  names,
+  onToggle,
+}: {
+  days: number;
+  order: number[];
+  /** Single-letter labels, aligned with `order`. */
+  labels: string[];
+  /** Full weekday names for VoiceOver, aligned with `order`. */
+  names: string[];
+  onToggle: (dow: number) => void;
+}) {
+  return (
+    <Host matchContents={{ vertical: true }} style={styles.days} seedColor={S.accent}>
+      <HStack spacing={0}>
+        {order.flatMap((dow, i) => {
+          const on = hasDay(days, dow);
+          return [
+            i > 0 ? <Spacer key={`gap-${dow}`} /> : null,
+            <Toggle
+              key={dow}
+              isOn={on}
+              // The native control also reports its initial state, so only react to real changes.
+              onIsOnChange={(next) => { if (next !== on) onToggle(dow); }}
+              modifiers={[toggleStyle('button'), buttonBorderShape('circle'), tint(S.accent), accessibilityLabel(names[i])]}
+            >
+              <SwiftText modifiers={[font({ size: 15, weight: 'semibold' }), frame({ width: 24, height: 24 }), foregroundStyle(on ? S.accentDeep : S.muted)]}>{labels[i]}</SwiftText>
+            </Toggle>,
+          ];
+        })}
+      </HStack>
     </Host>
   );
 }
@@ -134,6 +177,9 @@ export function NativeColorPicker({ value, onChange }: { value: string; onChange
 }
 
 const styles = StyleSheet.create({
+  days: {
+    alignSelf: 'stretch',
+  },
   inputBox: {
     backgroundColor: S.card,
     borderRadius: 16,

@@ -3,9 +3,9 @@ import type { Person } from './people';
 import {
   countCompletions,
   longestStreak,
-  personDayComplete,
+  personDayState,
   personStreak,
-  togetherDayComplete,
+  togetherDayState,
   togetherStreak,
 } from './streaks';
 import type { Completions, Habit } from '@/store/tasksStore';
@@ -32,8 +32,8 @@ export function computeAchievements(
   const dates = Object.keys(completions);
   const myStreak = personStreak(habits, completions, me);
   const ourStreak = togetherStreak(habits, completions);
-  const myLongest = longestStreak(dates, (d) => personDayComplete(habits, completions, d, me));
-  const ourLongest = longestStreak(dates, (d) => togetherDayComplete(habits, completions, d));
+  const myLongest = longestStreak(dates, (d) => personDayState(habits, completions, d, me));
+  const ourLongest = longestStreak(dates, (d) => togetherDayState(habits, completions, d));
   const myCompletions = countCompletions(completions, me);
   const sharedDone = dates.some((d) =>
     habits.some((h) => h.owner === 'both' && completions[d]?.[h.id]?.A && completions[d]?.[h.id]?.S),
@@ -47,7 +47,8 @@ export function computeAchievements(
     for (let i = 0; i < 12; i++) {
       const anchor = addDays(today(), -7 * i);
       const week = getWeekDates(anchor, 1);
-      if (week.every((d) => d <= today() && togetherDayComplete(habits, completions, d))) return true;
+      const states = week.map((d) => (d <= today() ? togetherDayState(habits, completions, d) : 'open'));
+      if (states.every((st) => st !== 'open') && states.includes('done')) return true;
     }
     return false;
   })();

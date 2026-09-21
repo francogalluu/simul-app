@@ -2,60 +2,84 @@ import { addDays, today } from './dates';
 import { involves, type Person } from './people';
 import type { Completions, Habit } from '@/store/tasksStore';
 
-export const isHabitActiveOn = (h: Habit, date: string) => h.status === 'active' && h.createdAt <= date;
+import { isScheduledOn } from './weekdays';
+
+/** A habit is due on a day once it has started, is accepted, and repeats on that weekday. */
+export const isHabitActiveOn = (h: Habit, date: string) =>
+  h.status === 'active' && h.createdAt <= date && isScheduledOn(h.days, date);
+
+/** 'rest' = nothing was due that day, so it neither counts toward a streak nor breaks it. */
+export type DayState = 'rest' | 'done' | 'open';
 
 export const isDoneBy = (completions: Completions, habitId: string, date: string, person: Person) =>
   Boolean(completions[date]?.[habitId]?.[person]);
 
-/** Every habit this person is part of on `date` is completed by them (and there's at least one). */
-export function personDayComplete(habits: Habit[], completions: Completions, date: string, person: Person): boolean {
+export function personDayState(habits: Habit[], completions: Completions, date: string, person: Person): DayState {
   const mine = habits.filter((h) => isHabitActiveOn(h, date) && involves(h.owner, person));
-  return mine.length > 0 && mine.every((h) => isDoneBy(completions, h.id, date, person));
+  if (mine.length === 0) return 'rest';
+  return mine.every((h) => isDoneBy(completions, h.id, date, person)) ? 'done' : 'open';
 }
+
+export function togetherDayState(habits: Habit[], completions: Completions, date: string): DayState {
+  const shared = habits.filter((h) => isHabitActiveOn(h, date) && h.owner === 'both');
+  if (shared.length === 0) return 'rest';
+  return shared.every((h) => isDoneBy(completions, h.id, date, 'A') && isDoneBy(completions, h.id, date, 'S'))
+    ? 'done'
+    : 'open';
+}
+
+/** Every habit this person is part of on `date` is completed by them (and there's at least one). */
+export const personDayComplete = (habits: Habit[], completions: Completions, date: string, person: Person) =>
+  personDayState(habits, completions, date, person) === 'done';
 
 /** Every shared habit on `date` is completed by both people (and there's at least one). */
-export function togetherDayComplete(habits: Habit[], completions: Completions, date: string): boolean {
-  const shared = habits.filter((h) => isHabitActiveOn(h, date) && h.owner === 'both');
-  return (
-    shared.length > 0 &&
-    shared.every((h) => isDoneBy(completions, h.id, date, 'A') && isDoneBy(completions, h.id, date, 'S'))
-  );
-}
+export const togetherDayComplete = (habits: Habit[], completions: Completions, date: string) =>
+  togetherDayState(habits, completions, date) === 'done';
+
+/** Earliest day any habit could have been due; nothing before it can count. */
+const firstHabitDay = (habits: Habit[]) =>
+  habits.reduce<string | null>((min, h) => (min == null || h.createdAt < min ? h.createdAt : min), null);
 
 /**
- * Consecutive complete days ending today. Today not being done yet doesn't
- * break the streak (the day isn't over) — in that case count from yesterday.
+ * Consecutive due days completed, ending today. Rest days are skipped, and today not
+ * being done yet doesn't break the streak (the day isn't over).
  */
-function streakEndingToday(isComplete: (date: string) => boolean): number {
+function streakEndingToday(state: (date: string) => DayState, since: string | null): number {
+  if (since == null) return 0;
   const t = today();
-  let cursor = isComplete(t) ? t : addDays(t, -1);
   let n = 0;
-  while (isComplete(cursor) && n < 3650) {
-    n += 1;
-    cursor = addDays(cursor, -1);
+  let d = t;
+  for (let i = 0; i < 3650 && d >= since; i += 1, d = addDays(d, -1)) {
+    const s = state(d);
+    if (s === 'rest') continue;
+    if (s === 'done') n += 1;
+    else if (d !== t) break;
   }
   return n;
 }
 
 export const personStreak = (habits: Habit[], completions: Completions, person: Person) =>
-  streakEndingToday((d) => personDayComplete(habits, completions, d, person));
+  streakEndingToday((d) => personDayState(habits, completions, d, person), firstHabitDay(habits));
 
 export const togetherStreak = (habits: Habit[], completions: Completions) =>
-  streakEndingToday((d) => togetherDayComplete(habits, completions, d));
+  streakEndingToday((d) => togetherDayState(habits, completions, d), firstHabitDay(habits));
 
-/** Longest run of complete days anywhere in history (for achievements). */
-export function longestStreak(dates: string[], isComplete: (date: string) => boolean): number {
-  const set = new Set(dates.filter(isComplete));
+/** Longest run of due days completed anywhere in history (for achievements); rest days don't break it. */
+export function longestStreak(dates: string[], state: (date: string) => DayState): number {
+  if (dates.length === 0) return 0;
+  const t = today();
+  const oldest = addDays(t, -3650);
+  const first = [...dates].sort()[0];
   let best = 0;
-  for (const d of set) {
-    if (set.has(addDays(d, -1))) continue; // not a run start
-    let len = 0;
-    let cursor = d;
-    while (set.has(cursor)) {
-      len += 1;
-      cursor = addDays(cursor, 1);
+  let run = 0;
+  for (let d = first > oldest ? first : oldest; d <= t; d = addDays(d, 1)) {
+    const s = state(d);
+    if (s === 'done') {
+      run += 1;
+      if (run > best) best = run;
+    } else if (s === 'open') {
+      run = 0;
     }
-    best = Math.max(best, len);
   }
   return best;
 }

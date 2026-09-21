@@ -152,7 +152,10 @@
     "achievements": "Achievements",
     "proofPending": "Waiting for {{name}} to approve",
     "review": "Review",
-    "proofSent": "{{name}} sent a photo"
+    "proofSent": "{{name}} sent a photo",
+    "notToday": "Not today",
+    "restTitle": "Nothing due today",
+    "restBody": "Enjoy the day off. Your habits come back on their days."
   },
   "times": {
     "Morning": "Morning",
@@ -271,6 +274,12 @@
     "quickPick": "Quick pick",
     "details": "Details",
     "when": "When",
+    "repeat": {
+      "title": "Repeat",
+      "every": "Every day",
+      "weekdays": "Weekdays",
+      "weekend": "Weekends"
+    },
     "name": "Name",
     "icon": "Icon",
     "namePlaceholder": "e.g. Morning stretch",

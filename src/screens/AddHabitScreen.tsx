@@ -18,7 +18,11 @@ import { useTasksStore } from '@/store/tasksStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { haptic } from '@/lib/haptics';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
-import { NativeSegmented, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
+import { NativeDaySelector, NativeSegmented, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
+import { useSettingsStore } from '@/store/settingsStore';
+import { getDateLocale } from '@/lib/dates';
+import { EVERY_DAY, summarizeDays, toggleDay, weekdayOrder } from '@/lib/weekdays';
+import { i18n } from '@/i18n';
 
 type Mode = 'single' | 'shared';
 
@@ -117,6 +121,29 @@ export default function AddHabitScreen() {
   const [name, setName] = useState(editing?.name ?? '');
   const [icon, setIcon] = useState(editing?.icon ?? '⭐');
   const [requireProof, setRequireProof] = useState(editing?.requireProof ?? false);
+  const [days, setDays] = useState(editing?.days ?? EVERY_DAY);
+  const weekStartsOn = useSettingsStore((st) => st.weekStartsOn);
+  const dayOrder = useMemo(() => weekdayOrder(weekStartsOn), [weekStartsOn]);
+  const dayLabels = useMemo(() => {
+    const loc = getDateLocale();
+    return {
+      letters: dayOrder.map((dow) => loc.localize.day(dow as 0 | 1 | 2 | 3 | 4 | 5 | 6, { width: 'narrow' }).toLocaleUpperCase()),
+      names: dayOrder.map((dow) => loc.localize.day(dow as 0 | 1 | 2 | 3 | 4 | 5 | 6, { width: 'wide' })),
+    };
+    // The language can change while the app is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayOrder, i18n.language]);
+  const daysSummary = summarizeDays(days, weekStartsOn);
+  const daysCaption =
+    daysSummary.kind === 'custom' ? daysSummary.text : t(`habit.repeat.${daysSummary.kind}`);
+
+  const handleToggleDay = (dow: number) => {
+    const next = toggleDay(days, dow);
+    // A habit has to repeat on at least one day.
+    if (next === 0) { haptic.warning(); return; }
+    haptic.tap();
+    setDays(next);
+  };
   // The icon page hands its pick back through this screen's route params.
   const pickedIcon = route.params?.icon;
   useEffect(() => {
@@ -152,14 +179,14 @@ export default function AddHabitScreen() {
     if (!trimmed) return;
 
     if (isEdit && editing) {
-      updateHabit(editing.id, { name: trimmed, icon, time, requireProof });
+      updateHabit(editing.id, { name: trimmed, icon, time, requireProof, days });
       haptic.success();
       close();
       return;
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both', requireProof });
+      addHabit({ name: trimmed, time, icon, owner: 'both', requireProof, days });
       haptic.success();
       Alert.alert(
         t('habit.inviteSent'),
@@ -171,7 +198,7 @@ export default function AddHabitScreen() {
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: 'me', requireProof });
+    addHabit({ name: trimmed, time, icon, owner: 'me', requireProof, days });
     haptic.success();
     close();
   };
@@ -249,7 +276,7 @@ export default function AddHabitScreen() {
     });
     // handleDelete/handleSubmit only depend on the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, editing?.id, editing?.requireProof]);
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, editing?.id, editing?.requireProof]);
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
@@ -308,6 +335,18 @@ export default function AddHabitScreen() {
                 options={TIMES.map((time) => ({ value: time, label: t(`times.${time}`) }))}
               />
             </View>
+
+            <View style={[s.repeatHeader, { marginTop: 18 }]}>
+              <Text style={s.fieldLabelInline}>{t('habit.repeat.title')}</Text>
+              <Text style={s.repeatCaption}>{daysCaption}</Text>
+            </View>
+            <NativeDaySelector
+              days={days}
+              order={dayOrder}
+              labels={dayLabels.letters}
+              names={dayLabels.names}
+              onToggle={handleToggleDay}
+            />
 
             <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.name')}</Text>
             <View style={s.nameRow}>
@@ -425,6 +464,21 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: S.ink700,
     marginBottom: 8,
+  },
+  repeatHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fieldLabelInline: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: S.ink700,
+  },
+  repeatCaption: {
+    fontSize: 13,
+    color: S.tertiary,
   },
   nameRow: {
     flexDirection: 'row',
