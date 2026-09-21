@@ -15,6 +15,8 @@ export function NativeToggle({ value, onChange, disabled }: { value: boolean; on
   );
 }
 
+const DAY_BOX = 38;
+
 /**
  * One row of seven native toggle buttons for picking weekdays. `days` is the Date.getDay()
  * bitmask (see lib/weekdays); `order` lists the weekday numbers left to right.
@@ -34,26 +36,36 @@ export function NativeDaySelector({
   names: string[];
   onToggle: (dow: number) => void;
 }) {
+  // The row is laid out by React Native with fixed sizes, and each day is its own small native view in a
+  // fixed box. Sizing the whole row inside SwiftUI let it outgrow the card when the phone uses Bold Text,
+  // Larger Text or another accessibility setting.
   return (
-    <Host matchContents={{ vertical: true }} style={styles.days} seedColor={S.accent}>
-      <HStack spacing={0}>
-        {order.flatMap((dow, i) => {
-          const on = hasDay(days, dow);
-          return [
-            i > 0 ? <Spacer key={`gap-${dow}`} /> : null,
+    <View style={styles.days}>
+      {order.map((dow, i) => {
+        const on = hasDay(days, dow);
+        return (
+          <Host key={dow} style={styles.day} seedColor={S.accent}>
             <Toggle
-              key={dow}
               isOn={on}
               // The native control also reports its initial state, so only react to real changes.
               onIsOnChange={(next) => { if (next !== on) onToggle(dow); }}
               modifiers={[toggleStyle('button'), buttonBorderShape('circle'), tint(S.accent), accessibilityLabel(names[i])]}
             >
-              <SwiftText modifiers={[font({ size: 15, weight: 'semibold' }), frame({ width: 24, height: 24 }), foregroundStyle(on ? S.accentDeep : S.muted)]}>{labels[i]}</SwiftText>
-            </Toggle>,
-          ];
-        })}
-      </HStack>
-    </Host>
+              <SwiftText
+                modifiers={[
+                  font({ size: 15, weight: 'semibold' }),
+                  lineLimit(1),
+                  frame({ width: 24, height: 24 }),
+                  foregroundStyle(on ? S.accentDeep : S.muted),
+                ]}
+              >
+                {labels[i]}
+              </SwiftText>
+            </Toggle>
+          </Host>
+        );
+      })}
+    </View>
   );
 }
 
@@ -177,8 +189,15 @@ export function NativeColorPicker({ value, onChange }: { value: string; onChange
 }
 
 const styles = StyleSheet.create({
+  // Fixed box per day; the row spreads the seven of them across the card.
   days: {
     alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  day: {
+    width: DAY_BOX,
+    height: DAY_BOX,
   },
   inputBox: {
     backgroundColor: S.card,
