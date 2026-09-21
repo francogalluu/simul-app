@@ -19,7 +19,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "francogalluzzo@icloud.com"
+        "appleId": "francogalluzzo@icloud.com",
+        "ascAppId": "6814307152"
       }
     }
   }
