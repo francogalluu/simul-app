@@ -35,7 +35,7 @@ Onboarding and Settings let each person set a profile photo and pick their own c
 
 ## Sign-in
 
-Email code/link (passwordless) plus native **Sign in with Apple** (`expo-apple-authentication` → `supabase.auth.signInWithIdToken`, nonce-checked; `AuthScreen` hides the button where Apple auth isn't available, e.g. Expo Go on Android). Needs the Apple provider enabled in Supabase Auth with the bundle id `com.simul.app` as a client ID. The old `__DEV__` "Sign in as A/B" shortcut and its seeded `dev-a/b@simul.test` accounts were removed; delete those two users from `auth.users` if they still exist.
+Email code/link (passwordless) plus native **Sign in with Apple** (`expo-apple-authentication` → `supabase.auth.signInWithIdToken`, nonce-checked; `AuthScreen` hides the button where Apple auth isn't available, e.g. Expo Go on Android). Needs the Apple provider enabled in Supabase Auth with the bundle id `com.francogalluzzo.simul` as a client ID. The old `__DEV__` "Sign in as A/B" shortcut and its seeded `dev-a/b@simul.test` accounts were removed; delete those two users from `auth.users` if they still exist.
 
 Still to do on the dashboard / later:
 - Custom SMTP (Resend, Postmark…) before real users — the built-in sender is heavily rate-limited and dev-only.

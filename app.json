@@ -12,7 +12,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.simul.app",
+      "bundleIdentifier": "com.francogalluzzo.simul",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -70,10 +70,10 @@
               "appExtensions": [
                 {
                   "targetName": "ExpoWidgetsTarget",
-                  "bundleIdentifier": "com.simul.app.ExpoWidgetsTarget",
+                  "bundleIdentifier": "com.francogalluzzo.simul.ExpoWidgetsTarget",
                   "entitlements": {
                     "com.apple.security.application-groups": [
-                      "group.com.simul.app"
+                      "group.com.francogalluzzo.simul"
                     ]
                   }
                 }
