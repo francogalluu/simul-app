@@ -338,12 +338,16 @@ function TaskRow({
     );
   })();
 
+  // Tapping the row opens edit (same as a long-press); completing the habit
+  // now requires tapping the checkbox itself, so the two actions don't collide.
+  const canEdit = Boolean(onLongPress);
+
   return (
     <Pressable
-      onPress={canToggle ? onToggle : undefined}
+      onPress={onLongPress}
       onLongPress={onLongPress}
       delayLongPress={320}
-      style={({ pressed }) => [styles.row, dimmed && styles.rowDimmed, pressed && canToggle && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, dimmed && styles.rowDimmed, pressed && canEdit && styles.rowPressed]}
     >
       <View style={styles.iconWrap}>
         <Text style={styles.iconText}>{habit.icon}</Text>
@@ -363,7 +367,13 @@ function TaskRow({
         {meta}
       </View>
 
-      <View style={styles.trailingWrap}>{trailing}</View>
+      <Pressable
+        onPress={canToggle ? onToggle : undefined}
+        hitSlop={10}
+        style={({ pressed }) => [styles.trailingWrap, pressed && canToggle && { opacity: 0.7 }]}
+      >
+        {trailing}
+      </Pressable>
 
       {celebrating && (
         <Animated.View
