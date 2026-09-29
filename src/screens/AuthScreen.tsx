@@ -20,6 +20,7 @@ export default function AuthScreen() {
   const sendCode = useAuthStore((s) => s.sendCode);
   const verifyCode = useAuthStore((s) => s.verifyCode);
   const signInWithApple = useAuthStore((s) => s.signInWithApple);
+  const signInDev = useAuthStore((s) => s.signInDev);
   const linkError = useAuthStore((s) => s.linkError);
   const clearLinkError = useAuthStore((s) => s.clearLinkError);
 
@@ -70,6 +71,16 @@ export default function AuthScreen() {
       if (res.error === 'canceled') return;
       haptic.warning();
       setError(errorMessage(res.error));
+    }
+  };
+
+  const devSignIn = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await signInDev();
+    if (res.error) {
+      setBusy(false);
+      setError(res.error === 'unconfigured' ? 'Set EXPO_PUBLIC_DEV_EMAIL and EXPO_PUBLIC_DEV_PASSWORD in .env' : 'Dev sign-in failed');
     }
   };
 
@@ -126,6 +137,7 @@ export default function AuthScreen() {
               <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
               <PrimaryButton label={t('auth.sendCode')} onPress={requestCode} loading={busy} disabled={!email.trim()} />
               <Text style={styles.hint}>{t('auth.noPasswords')}</Text>
+              {__DEV__ ? <PrimaryButton variant="link" label="Dev sign in" onPress={devSignIn} disabled={busy} /> : null}
             </View>
           ) : (
             <View style={styles.form}>

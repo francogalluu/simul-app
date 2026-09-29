@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View, TextInput, Pressable, ScrollView, FlatList, StyleSheet, Alert, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, TextInput, Pressable, ScrollView, FlatList, StyleSheet, Alert, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/AppText';
 import { useKindTranslation } from '@/lib/kind';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -313,8 +313,16 @@ export default function AddHabitScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {/* Inside a formSheet, KeyboardAvoidingView measures against the wrong frame, so the
+          keyboard covered the name field. The ScrollView insets itself and scrolls the focused input into view. */}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="interactive"
+        >
           {/* Who (new habits only: the owner of an existing habit can't change) */}
           {!isEdit && (
             <>
@@ -422,7 +430,7 @@ export default function AddHabitScreen() {
         </ScrollView>
         {dialog}
 
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }

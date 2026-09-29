@@ -355,14 +355,11 @@ function TaskRow({
 
       <View style={styles.textWrap}>
         <View style={styles.nameRow}>
-          <Text style={[styles.name, { color: isDone ? S.muted : S.ink900 }, isDone && styles.nameDone]} numberOfLines={1}>
+          {/* Pending invites are already dimmed and say "Waiting for … to accept" below, so no pill:
+              the name gets the full width and may wrap to a second line before truncating. */}
+          <Text style={[styles.name, { color: isDone ? S.muted : S.ink900 }, isDone && styles.nameDone]} numberOfLines={2}>
             {habit.name}
           </Text>
-          {k === 'pending-invite' && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>{t('home.pending')}</Text>
-            </View>
-          )}
         </View>
         {meta}
       </View>
@@ -524,17 +521,6 @@ const styles = StyleSheet.create({
   },
   reviewText: { fontSize: 12, fontWeight: '800', color: S.amber },
   restCard: { opacity: 0.75 },
-  pendingBadge: {
-    backgroundColor: S.amberSoft,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  pendingBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: S.amber,
-  },
   // Fixed width + right alignment so the checkbox always lands in the same
   // spot regardless of whether a wait-pill is shown next to it — otherwise
   // the checkbox visibly shifts between rows in different states.

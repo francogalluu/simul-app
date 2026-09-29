@@ -21,6 +21,8 @@ interface AuthState {
   verifyCode: (email: string, code: string) => Promise<{ error?: 'invalid_code' | 'network' | 'unknown' }>;
   /** Native Sign in with Apple. `canceled` means the person dismissed the sheet — not an error to show. */
   signInWithApple: () => Promise<{ error?: 'canceled' | 'network' | 'unknown' }>;
+  /** Dev-only: password sign-in with the account in EXPO_PUBLIC_DEV_EMAIL / EXPO_PUBLIC_DEV_PASSWORD. */
+  signInDev: () => Promise<{ error?: 'unconfigured' | 'unknown' }>;
   signOut: () => Promise<void>;
 }
 
@@ -171,6 +173,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       logError('auth.apple', e);
       return { error: 'unknown' };
     }
+  },
+
+  signInDev: async () => {
+    if (!__DEV__) return { error: 'unknown' };
+    const email = process.env.EXPO_PUBLIC_DEV_EMAIL;
+    const password = process.env.EXPO_PUBLIC_DEV_PASSWORD;
+    if (!email || !password) return { error: 'unconfigured' };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) return {};
+    logError('auth.dev', error);
+    return { error: 'unknown' };
   },
 
   signOut: async () => {
