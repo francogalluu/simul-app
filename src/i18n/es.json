@@ -156,7 +156,9 @@
     "notToday": "Hoy no toca",
     "restTitle": "Hoy no hay nada por hacer",
     "restBody": "Disfrutá el día libre. Tus hábitos vuelven en sus días.",
-    "paused": "Pausado"
+    "paused": "Pausado",
+    "weekProgress": "{{done}}/{{target}} esta semana",
+    "weekDone": "Listo por esta semana"
   },
   "times": {
     "Morning": "Mañana",
@@ -279,7 +281,15 @@
       "title": "Repetir",
       "every": "Todos los días",
       "weekdays": "Lunes a viernes",
-      "weekend": "Fines de semana"
+      "weekend": "Fines de semana",
+      "modeDays": "Días fijos",
+      "modeWeekly": "Veces por semana",
+      "weekly_one": "{{count}} vez por semana",
+      "weekly_other": "{{count}} veces por semana",
+      "perWeek_one": "vez por semana",
+      "perWeek_other": "veces por semana",
+      "fewer": "Menos veces",
+      "more": "Más veces"
     },
     "name": "Nombre",
     "icon": "Ícono",

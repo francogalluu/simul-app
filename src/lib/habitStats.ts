@@ -1,6 +1,8 @@
 import { addDays, today } from './dates';
 import { isDoneBy } from './streaks';
 import { isPausedOn, isScheduledOn } from './weekdays';
+import { weeklyRun } from './weekly';
+import type { WeekStartDay } from './dates';
 import type { Completions, Habit } from '@/store/tasksStore';
 
 /** Longest history we walk back through, in days. */
@@ -37,7 +39,7 @@ export interface HabitStats {
   trend: number[];
 }
 
-export function computeHabitStats(habit: Habit, completions: Completions, days = 30): HabitStats {
+export function computeHabitStats(habit: Habit, completions: Completions, days = 30, weekStartsOn: WeekStartDay = 1): HabitStats {
   const t = today();
   const windowStart = addDays(t, -(days - 1));
   // Walk from the habit's first day (or a year back) so the running streak is right at the window start.
@@ -60,6 +62,7 @@ export function computeHabitStats(habit: Habit, completions: Completions, days =
   }
 
   const window = all.filter((d) => d.date >= windowStart);
+  if (habit.weeklyTarget != null) return weeklyStats(habit, completions, window, all, total, weekStartsOn);
   // Today not being done yet doesn't break the streak (the day isn't over).
   const last = all[all.length - 1];
   const previous = all[all.length - 2];
@@ -76,4 +79,27 @@ export function computeHabitStats(habit: Habit, completions: Completions, days =
   });
 
   return { currentStreak, bestStreak: best, totalDone: total, rate, days: window, trend };
+}
+
+/**
+ * Stats for "N times a week" habits. Any day can hold a check-in and none is ever missed, so the streak and
+ * best are counted in weeks that reached the target, and the rate is met weeks over weeks that could have.
+ */
+function weeklyStats(habit: Habit, completions: Completions, window: HabitDay[], all: HabitDay[], total: number, weekStartsOn: WeekStartDay): HabitStats {
+  const run = weeklyRun(habit, completions, weekStartsOn);
+  const target = habit.weeklyTarget ?? 1;
+  const offset = all.length - window.length;
+  // Check-ins in the trailing 7 days against the target: a smooth line that tops out at 100%.
+  const trend = window.map((_, i) => {
+    const slice = all.slice(Math.max(0, offset + i - 6), offset + i + 1).filter((d) => !d.beforeStart);
+    return Math.min(1, slice.filter((d) => d.done).length / target);
+  });
+  return {
+    currentStreak: run.current,
+    bestStreak: run.best,
+    totalDone: total,
+    rate: run.countedWeeks ? run.metWeeks / run.countedWeeks : null,
+    days: window,
+    trend,
+  };
 }

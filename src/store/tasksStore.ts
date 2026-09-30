@@ -4,7 +4,8 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 import { supabase, toAppError, logError } from '@/lib/supabase';
 import { showSyncError } from '@/lib/errors';
 import { today } from '@/lib/dates';
-import { normalizeDays, normalizePauses, type Pause } from '@/lib/weekdays';
+import { EVERY_DAY, normalizeDays, normalizePauses, type Pause } from '@/lib/weekdays';
+import { normalizeWeeklyTarget } from '@/lib/weekly';
 import type { Owner, Person } from '@/lib/people';
 import type { Member } from './householdStore';
 
@@ -36,6 +37,8 @@ export interface Habit {
   requireProof: boolean;
   /** Weekdays it repeats on, as a bitmask (see lib/weekdays). Every day unless the person picked some. */
   days: number;
+  /** "N times per week, any day" (per person). null = repeats on `days` instead. */
+  weeklyTarget: number | null;
   /** Periods the habit is paused (see lib/weekdays). */
   pauses: Pause[];
 }
@@ -65,6 +68,7 @@ export interface HabitDraft {
   icon: string;
   requireProof?: boolean;
   days?: number;
+  weeklyTarget?: number | null;
 }
 
 type SyncStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -82,6 +86,7 @@ interface HabitRow {
   created_at: string;
   require_proof: boolean;
   days_of_week: number;
+  weekly_target: number | null;
   pauses: Pause[] | null;
 }
 
@@ -106,7 +111,7 @@ interface TasksState {
   stop: () => void;
 
   addHabit: (draft: HabitDraft) => string;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'requireProof' | 'days' | 'pauses'>>) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, 'name' | 'time' | 'icon' | 'requireProof' | 'days' | 'weeklyTarget' | 'pauses'>>) => void;
   removeHabit: (id: string) => void;
   acceptInvite: (id: string) => void;
   declineInvite: (id: string) => void;
@@ -118,7 +123,7 @@ interface TasksState {
 
 export const MAX_HABIT_NAME = 80;
 const TIMES: TimeOfDay[] = ['Morning', 'Afternoon', 'Evening', 'All day'];
-const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, require_proof, days_of_week, pauses';
+const HABIT_COLUMNS = 'id, household_id, name, icon, time_of_day, owner_id, status, requested_by, created_on, created_at, require_proof, days_of_week, weekly_target, pauses';
 const COMPLETION_COLUMNS = 'id, habit_id, user_id, date, proof_path, proof_status';
 const PAGE = 1000;
 
@@ -159,6 +164,7 @@ function derive(): Pick<TasksState, 'habits' | 'completions' | 'proofs'> {
       requestedBy: row.requested_by ? slots[row.requested_by] : undefined,
       requireProof: Boolean(row.require_proof),
       days: normalizeDays(row.days_of_week),
+      weeklyTarget: normalizeWeeklyTarget(row.weekly_target),
       pauses: normalizePauses(row.pauses),
     });
   }
@@ -394,6 +400,7 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const { householdId, userId } = ctx;
       const gen = generation;
       const shared = draft.owner === 'both';
+      const weeklyTarget = normalizeWeeklyTarget(draft.weeklyTarget);
       const row: HabitRow = {
         id: Crypto.randomUUID(),
         household_id: householdId,
@@ -406,7 +413,9 @@ export const useTasksStore = create<TasksState>()((set, get) => {
         created_on: today(),
         created_at: new Date().toISOString(),
         require_proof: Boolean(draft.requireProof),
-        days_of_week: normalizeDays(draft.days),
+        // A weekly habit isn't tied to weekdays, so it keeps the every-day mask.
+        days_of_week: weeklyTarget != null ? EVERY_DAY : normalizeDays(draft.days),
+        weekly_target: weeklyTarget,
         pauses: [],
       };
       habitRows[row.id] = row;
@@ -433,12 +442,16 @@ export const useTasksStore = create<TasksState>()((set, get) => {
       const before = habitRows[id];
       if (!before) return;
       const gen = generation;
-      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'require_proof' | 'days_of_week' | 'pauses'>> = {};
+      const update: Partial<Pick<HabitRow, 'name' | 'icon' | 'time_of_day' | 'require_proof' | 'days_of_week' | 'weekly_target' | 'pauses'>> = {};
       if (patch.name != null) update.name = patch.name.trim().slice(0, MAX_HABIT_NAME);
       if (patch.icon != null) update.icon = patch.icon.slice(0, 16);
       if (patch.time != null && TIMES.includes(patch.time as TimeOfDay)) update.time_of_day = patch.time;
       if (patch.requireProof != null) update.require_proof = patch.requireProof;
-      if (patch.days != null) update.days_of_week = normalizeDays(patch.days);
+      if (patch.weeklyTarget !== undefined) {
+        update.weekly_target = normalizeWeeklyTarget(patch.weeklyTarget);
+        if (update.weekly_target != null) update.days_of_week = EVERY_DAY;
+      }
+      if (patch.days != null && update.weekly_target == null) update.days_of_week = normalizeDays(patch.days);
       if (patch.pauses != null) update.pauses = normalizePauses(patch.pauses);
       habitRows[id] = { ...before, ...update };
       publish();

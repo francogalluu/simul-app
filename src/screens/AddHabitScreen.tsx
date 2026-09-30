@@ -21,6 +21,7 @@ import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
 import { NativeDaySelector, NativeSegmented, NativeToggle, useNativeConfirm } from '@/components/NativeControls';
 import { useSettingsStore } from '@/store/settingsStore';
 import { addDays, getDateLocale, today } from '@/lib/dates';
+import { MAX_WEEKLY_TARGET } from '@/lib/weekly';
 import { EVERY_DAY, endPause, isPausedOn, startPause, summarizeDays, toggleDay, weekdayOrder } from '@/lib/weekdays';
 import { i18n } from '@/i18n';
 
@@ -126,6 +127,10 @@ export default function AddHabitScreen() {
   const [icon, setIcon] = useState(editing?.icon ?? '⭐');
   const [requireProof, setRequireProof] = useState(editing?.requireProof ?? false);
   const [days, setDays] = useState(editing?.days ?? EVERY_DAY);
+  const [repeatMode, setRepeatMode] = useState<'days' | 'weekly'>(editing?.weeklyTarget != null ? 'weekly' : 'days');
+  const [weeklyTarget, setWeeklyTarget] = useState(editing?.weeklyTarget ?? 3);
+  /** null = repeats on the chosen weekdays. */
+  const weekly = repeatMode === 'weekly' ? weeklyTarget : null;
   const weekStartsOn = useSettingsStore((st) => st.weekStartsOn);
   const dayOrder = useMemo(() => weekdayOrder(weekStartsOn), [weekStartsOn]);
   const dayLabels = useMemo(() => {
@@ -139,7 +144,16 @@ export default function AddHabitScreen() {
   }, [dayOrder, i18n.language]);
   const daysSummary = summarizeDays(days, weekStartsOn);
   const daysCaption =
-    daysSummary.kind === 'custom' ? daysSummary.text : t(`habit.repeat.${daysSummary.kind}`);
+    weekly != null
+      ? t('habit.repeat.weekly', { count: weekly })
+      : daysSummary.kind === 'custom' ? daysSummary.text : t(`habit.repeat.${daysSummary.kind}`);
+
+  const stepWeekly = (delta: number) => {
+    const next = Math.min(MAX_WEEKLY_TARGET, Math.max(1, weeklyTarget + delta));
+    if (next === weeklyTarget) { haptic.warning(); return; }
+    haptic.tap();
+    setWeeklyTarget(next);
+  };
 
   const handleToggleDay = (dow: number) => {
     const next = toggleDay(days, dow);
@@ -183,14 +197,14 @@ export default function AddHabitScreen() {
     if (!trimmed) return;
 
     if (isEdit && editing) {
-      updateHabit(editing.id, { name: trimmed, icon, time, requireProof, days });
+      updateHabit(editing.id, { name: trimmed, icon, time, requireProof, days, weeklyTarget: weekly });
       haptic.success();
       close();
       return;
     }
 
     if (mode === 'shared') {
-      addHabit({ name: trimmed, time, icon, owner: 'both', requireProof, days });
+      addHabit({ name: trimmed, time, icon, owner: 'both', requireProof, days, weeklyTarget: weekly });
       haptic.success();
       Alert.alert(
         t('habit.inviteSent'),
@@ -202,7 +216,7 @@ export default function AddHabitScreen() {
       return;
     }
 
-    addHabit({ name: trimmed, time, icon, owner: 'me', requireProof, days });
+    addHabit({ name: trimmed, time, icon, owner: 'me', requireProof, days, weeklyTarget: weekly });
     haptic.success();
     close();
   };
@@ -309,7 +323,7 @@ export default function AddHabitScreen() {
     });
     // handleDelete/handleSubmit/togglePause only depend on the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, paused, screenWidth, editing?.id, editing?.requireProof]);
+  }, [navigation, isEdit, isPendingInvite, canSubmit, mode, name, icon, timeChoice, requireProof, days, weekly, paused, screenWidth, editing?.id, editing?.requireProof]);
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
@@ -381,13 +395,50 @@ export default function AddHabitScreen() {
               <Text style={s.fieldLabelInline}>{t('habit.repeat.title')}</Text>
               <Text style={s.repeatCaption}>{daysCaption}</Text>
             </View>
-            <NativeDaySelector
-              days={days}
-              order={dayOrder}
-              labels={dayLabels.letters}
-              names={dayLabels.names}
-              onToggle={handleToggleDay}
+            <NativeSegmented
+              value={repeatMode}
+              onChange={(next: 'days' | 'weekly') => { haptic.tap(); setRepeatMode(next); }}
+              options={[
+                { value: 'days', label: t('habit.repeat.modeDays') },
+                { value: 'weekly', label: t('habit.repeat.modeWeekly') },
+              ]}
             />
+            {repeatMode === 'days' ? (
+              <View style={{ marginTop: 8 }}>
+                <NativeDaySelector
+                  days={days}
+                  order={dayOrder}
+                  labels={dayLabels.letters}
+                  names={dayLabels.names}
+                  onToggle={handleToggleDay}
+                />
+              </View>
+            ) : (
+              <View style={[s.stepper, { marginTop: 12 }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('habit.repeat.fewer')}
+                  onPress={() => stepWeekly(-1)}
+                  disabled={weeklyTarget <= 1}
+                  style={({ pressed }) => [s.stepButton, weeklyTarget <= 1 && { opacity: 0.35 }, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={s.stepButtonText}>−</Text>
+                </Pressable>
+                <View style={s.stepCenter}>
+                  <Text style={s.stepValue}>{weeklyTarget}</Text>
+                  <Text style={s.stepLabel}>{t('habit.repeat.perWeek', { count: weeklyTarget })}</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('habit.repeat.more')}
+                  onPress={() => stepWeekly(1)}
+                  disabled={weeklyTarget >= MAX_WEEKLY_TARGET}
+                  style={({ pressed }) => [s.stepButton, weeklyTarget >= MAX_WEEKLY_TARGET && { opacity: 0.35 }, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={s.stepButtonText}>+</Text>
+                </Pressable>
+              </View>
+            )}
 
             <Text style={[s.fieldLabel, { marginTop: 18 }]}>{t('habit.name')}</Text>
             <View style={s.nameRow}>
@@ -516,6 +567,43 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: S.ink700,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 18,
+    backgroundColor: S.bg,
+  },
+  stepButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: S.accentSoft,
+  },
+  stepButtonText: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: '600',
+    color: S.accentDeep,
+  },
+  stepCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  stepValue: {
+    fontFamily: fonts.bold,
+    fontSize: 32,
+    lineHeight: 38,
+    color: S.ink900,
+  },
+  stepLabel: {
+    fontSize: 13,
+    color: S.tertiary,
   },
   repeatCaption: {
     fontSize: 13,

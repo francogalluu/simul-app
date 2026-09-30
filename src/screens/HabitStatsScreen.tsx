@@ -7,6 +7,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { SmoothChart } from '../../modules/simul-chart';
 import type { RootStackParamList } from '@/navigation/types';
 import { useTasksStore } from '@/store/tasksStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { partnerOf, useMe, usePeople } from '@/lib/people';
 import { computeHabitStats } from '@/lib/habitStats';
 import { S, fonts, cardShadow, SCREEN_PADDING } from '@/lib/simulTheme';
@@ -22,6 +23,7 @@ export default function HabitStatsScreen() {
   const partnerName = usePeople()[partnerOf(me)].name;
   const habits = useTasksStore((s) => s.habits);
   const completions = useTasksStore((s) => s.completions);
+  const weekStartsOn = useSettingsStore((st) => st.weekStartsOn);
   const habit = habits.find((h) => h.id === params.habitId);
 
   React.useEffect(() => {
@@ -29,8 +31,8 @@ export default function HabitStatsScreen() {
   }, [habit, navigation]);
 
   const stats = useMemo(
-    () => (habit ? computeHabitStats(habit, completions, WINDOW_DAYS) : null),
-    [habit, completions],
+    () => (habit ? computeHabitStats(habit, completions, WINDOW_DAYS, weekStartsOn) : null),
+    [habit, completions, weekStartsOn],
   );
   if (!habit || !stats) return null;
 

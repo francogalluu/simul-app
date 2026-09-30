@@ -14,14 +14,21 @@ export type DayState = 'rest' | 'done' | 'open';
 export const isDoneBy = (completions: Completions, habitId: string, date: string, person: Person) =>
   Boolean(completions[date]?.[habitId]?.[person]);
 
+/**
+ * Weekly ("N times a week") habits aren't due on any particular day, so they can never leave a day open:
+ * they only count on the days they were actually done, and skipping them doesn't break a day streak.
+ */
+const dueOnDay = (h: Habit, completions: Completions, date: string, people: Person[]) =>
+  h.weeklyTarget == null || people.every((p) => isDoneBy(completions, h.id, date, p));
+
 export function personDayState(habits: Habit[], completions: Completions, date: string, person: Person): DayState {
-  const mine = habits.filter((h) => isHabitActiveOn(h, date) && involves(h.owner, person));
+  const mine = habits.filter((h) => isHabitActiveOn(h, date) && involves(h.owner, person) && dueOnDay(h, completions, date, [person]));
   if (mine.length === 0) return 'rest';
   return mine.every((h) => isDoneBy(completions, h.id, date, person)) ? 'done' : 'open';
 }
 
 export function togetherDayState(habits: Habit[], completions: Completions, date: string): DayState {
-  const shared = habits.filter((h) => isHabitActiveOn(h, date) && h.owner === 'both');
+  const shared = habits.filter((h) => isHabitActiveOn(h, date) && h.owner === 'both' && dueOnDay(h, completions, date, ['A', 'S']));
   if (shared.length === 0) return 'rest';
   return shared.every((h) => isDoneBy(completions, h.id, date, 'A') && isDoneBy(completions, h.id, date, 'S'))
     ? 'done'
@@ -101,7 +108,7 @@ export function summarizeDay(habits: Habit[], completions: Completions, date: st
   let done = 0;
   for (const h of active) {
     for (const p of ['A', 'S'] as Person[]) {
-      if (!involves(h.owner, p)) continue;
+      if (!involves(h.owner, p) || !dueOnDay(h, completions, date, [p])) continue;
       pairs += 1;
       if (isDoneBy(completions, h.id, date, p)) done += 1;
     }

@@ -8,6 +8,7 @@ import { partnerOf, usePeople, type Person } from '@/lib/people';
 import { Avatar } from '@/components/Avatar';
 import { isDoneBy, isHabitActiveOn } from '@/lib/streaks';
 import { isPausedOn, isScheduledOn, summarizeDays } from '@/lib/weekdays';
+import { weekCount } from '@/lib/weekly';
 import { useSettingsStore } from '@/store/settingsStore';
 import { S, fonts, softShadow } from '@/lib/simulTheme';
 import type { Completions, Habit, Proof, Proofs } from '@/store/tasksStore';
@@ -205,6 +206,11 @@ export function TaskList({
                   readOnly={readOnly}
                   celebrating={celebratingId === habit.id}
                   proofs={proofs[date]?.[habit.id]}
+                  week={
+                    habit.weeklyTarget != null && habit.status === 'active' && (habit.owner === 'both' || habit.owner === me)
+                      ? { done: weekCount(habit, completions, date, me, weekStartsOn), target: habit.weeklyTarget }
+                      : undefined
+                  }
                   onOpenProofs={() => onOpenProofs(habit)}
                   onToggle={() => onToggle(habit)}
                   // Only the owner can edit a habit; either person can edit a shared one.
@@ -229,6 +235,7 @@ function TaskRow({
   readOnly,
   celebrating,
   proofs,
+  week,
   onOpenProofs,
   onToggle,
   onLongPress,
@@ -239,6 +246,8 @@ function TaskRow({
   readOnly: boolean;
   celebrating: boolean;
   proofs?: Partial<Record<Person, Proof>>;
+  /** "N times a week" habits: my check-ins so far this week. */
+  week?: { done: number; target: number };
   onOpenProofs: () => void;
   onToggle: () => void;
   onLongPress?: () => void;
@@ -249,7 +258,8 @@ function TaskRow({
   const timeLabel = t(`times.${habit.time}`, { defaultValue: habit.time });
   const k = state.kind;
   const isDone = k === 'done' || k === 'partner-only-done';
-  const dimmed = k === 'pending-invite';
+  const weekMetNotToday = week != null && week.done >= week.target && k === 'todo';
+  const dimmed = k === 'pending-invite' || weekMetNotToday;
   // Proof of work: my photo waiting for the other person, or theirs waiting for me.
   const awaitingApproval = proofs?.[me]?.status === 'pending';
   const toReview = proofs?.[partner]?.status === 'pending';
@@ -270,6 +280,12 @@ function TaskRow({
           </View>
         ) : (
           <Avatar person={habit.owner} size={14} style={styles.metaAvatarSingle} />
+        )}
+        {week && (
+          <Text style={[styles.meta, weekMetNotToday && { color: S.accentDeep }]}>
+            {' • '}
+            {weekMetNotToday ? t('home.weekDone') : t('home.weekProgress', { done: week.done, target: week.target })}
+          </Text>
         )}
       </View>
     );

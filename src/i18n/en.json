@@ -156,7 +156,9 @@
     "notToday": "Not today",
     "restTitle": "Nothing due today",
     "restBody": "Enjoy the day off. Your habits come back on their days.",
-    "paused": "Paused"
+    "paused": "Paused",
+    "weekProgress": "{{done}}/{{target}} this week",
+    "weekDone": "Done for the week"
   },
   "times": {
     "Morning": "Morning",
@@ -279,7 +281,15 @@
       "title": "Repeat",
       "every": "Every day",
       "weekdays": "Weekdays",
-      "weekend": "Weekends"
+      "weekend": "Weekends",
+      "modeDays": "Specific days",
+      "modeWeekly": "Times a week",
+      "weekly_one": "{{count}} time a week",
+      "weekly_other": "{{count}} times a week",
+      "perWeek_one": "time a week",
+      "perWeek_other": "times a week",
+      "fewer": "Fewer times",
+      "more": "More times"
     },
     "name": "Name",
     "icon": "Icon",
