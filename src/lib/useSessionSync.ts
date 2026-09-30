@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useTasksStore } from '@/store/tasksStore';
 import { useGoalsStore } from '@/store/goalsStore';
+import { DEMO } from '@/demo/demoData';
 
 /**
  * Keeps data in step with the auth session:
@@ -21,6 +22,7 @@ export function useSessionSync() {
   // Session changes: load the household, or clear everything.
   const previousUserId = useRef<string | null>(null);
   useEffect(() => {
+    if (DEMO) return;
     if (userId) {
       void useHouseholdStore.getState().load(userId);
     } else {
@@ -34,6 +36,7 @@ export function useSessionSync() {
 
   // Household ready → start syncing habits; left/removed → stop.
   useEffect(() => {
+    if (DEMO) return;
     if (userId && householdId && householdStatus === 'ready') {
       void useTasksStore.getState().start(householdId, userId, members);
     } else if (householdStatus === 'none') {
@@ -43,7 +46,7 @@ export function useSessionSync() {
 
   // Partner joins, leaves or renames → refresh the roster.
   useEffect(() => {
-    if (!householdId) return;
+    if (!householdId || DEMO) return;
     const refresh = () => void useHouseholdStore.getState().refreshMembers();
     const filter = `household_id=eq.${householdId}`;
     const channel = supabase
@@ -62,7 +65,7 @@ export function useSessionSync() {
   // Coming back to the foreground: catch up on anything missed while suspended.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' || !useAuthStore.getState().session) return;
+      if (DEMO || state !== 'active' || !useAuthStore.getState().session) return;
       void useHouseholdStore.getState().refreshMembers();
       void useTasksStore.getState().refetch();
     });

@@ -19,6 +19,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { i18n, getDeviceLocale } from './src/i18n';
 import { useSettingsStore } from './src/store/settingsStore';
 import { useAuthStore } from './src/store/authStore';
+import { DEMO, seedDemo } from './src/demo/demoData';
 
 // Ensure i18n is initialized (side-effect import).
 void i18n;
@@ -52,7 +53,10 @@ export default function App() {
   });
 
   // Restore the Supabase session and listen for sign-in / sign-out.
-  useEffect(() => useAuthStore.getState().init(), []);
+  useEffect(() => {
+    if (DEMO) { seedDemo(); return; }
+    return useAuthStore.getState().init();
+  }, []);
 
   if (!fontsLoaded) {
     return (
