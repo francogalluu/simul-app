@@ -1,12 +1,16 @@
 """Frames raw simulator screenshots into App Store images (1320x2868, the 6.9" iPhone size).
 
-Run:  PYTHONPATH=<dir with Pillow> python3 store-screenshots/make_frames.py
+Run:  PYTHONPATH=<dir with Pillow> python3 store-screenshots/make_frames.py [en|es]
+      en reads raw/ and writes app-store/;  es reads raw-es/ and writes app-store-es/
 """
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ROOT = Path(__file__).parent
-RAW, OUT = ROOT / "raw", ROOT / "app-store"
+LANG = sys.argv[1] if len(sys.argv) > 1 else "en"
+SUFFIX = "" if LANG == "en" else f"-{LANG}"
+RAW, OUT = ROOT / f"raw{SUFFIX}", ROOT / f"app-store{SUFFIX}"
 FONTS = ROOT.parent / "node_modules/@expo-google-fonts"
 W, H = 1320, 2868
 
@@ -19,13 +23,25 @@ SUB = FONTS / "nunito/600SemiBold/Nunito_600SemiBold.ttf"
 # file, headline, subtitle, background style, options
 #   sheet: the capture is an iOS sheet, so the dimmed screen above it is repainted as page background
 #   bleed: a larger device that runs off the bottom edge (for screens with empty space at the bottom)
-SLIDES = [
-    ("01-home.png", "Build habits, together", "Your shared routine, at a glance.", "green", {}),
-    ("02-add-weekly.png", "A routine that fits your week", "Exact days, or a few times a week.", "cream", {"sheet": True}),
-    ("03-add-shared-proof.png", "Proof it happened", "Attach a photo. Your partner confirms it.", "green", {"sheet": True}),
-    ("04-achievements.png", "Celebrate every win", "Earn badges as you keep showing up.", "cream", {}),
-    ("05-stats.png", "Watch your streaks grow", "Clear stats show what's working.", "green", {"sheet": True, "bleed": True}),
-]
+COPY = {
+    "en": [
+        ("Build habits, together", "Your shared routine, at a glance."),
+        ("A routine that fits your week", "Exact days, or a few times a week."),
+        ("Proof it happened", "Attach a photo. Your partner confirms it."),
+        ("Celebrate every win", "Earn badges as you keep showing up."),
+        ("Watch your streaks grow", "Clear stats show what's working."),
+    ],
+    "es": [
+        ("Construyan hábitos, juntos", "Su rutina compartida, de un vistazo."),
+        ("Una rutina a tu medida", "Días fijos, o unas veces por semana."),
+        ("Prueba de que lo hiciste", "Subí una foto. Tu pareja la confirma."),
+        ("Celebrá cada logro", "Ganá insignias mientras seguís firme."),
+        ("Mirá crecer tus rachas", "Estadísticas claras de lo que funciona."),
+    ],
+}[LANG]
+_FILES = ["01-home.png", "02-add-weekly.png", "03-add-shared-proof.png", "04-achievements.png", "05-stats.png"]
+_STYLE = [("green", {}), ("cream", {"sheet": True}), ("green", {"sheet": True}), ("cream", {}), ("green", {"sheet": True, "bleed": True})]
+SLIDES = [(f, h, sub, st, o) for f, (h, sub), (st, o) in zip(_FILES, COPY, _STYLE)]
 
 
 def repaint_dimmed_top(im, rows=310):

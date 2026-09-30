@@ -9,6 +9,11 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { EVERY_DAY } from '@/lib/weekdays';
 
 export const DEMO = process.env.EXPO_PUBLIC_DEMO === '1';
+/** EXPO_PUBLIC_DEMO_LANG=es shows the Spanish demo (UI and habit names). */
+const LANG = process.env.EXPO_PUBLIC_DEMO_LANG === 'es' ? 'es' : 'en';
+const NAMES = LANG === 'es'
+  ? { dinner: 'Cocinar juntos', run: 'Correr por la mañana', read: 'Leer 20 páginas', yoga: 'Yoga' }
+  : { dinner: 'Cook dinner together', run: 'Morning run', read: 'Read 20 pages', yoga: 'Yoga' };
 
 const HISTORY_DAYS = 60;
 /** Days (counted back from today) that Thomas skipped reading, so the stats chart isn't a flat line. */
@@ -25,10 +30,10 @@ export function seedDemo() {
 
   const base = { status: 'active' as const, createdAt: start, days: EVERY_DAY, weeklyTarget: null, pauses: [], requireProof: false };
   const habits: Habit[] = [
-    { ...base, id: 'h-dinner', name: 'Cook dinner together', icon: '🍳', time: 'Evening', owner: 'both', requireProof: true },
-    { ...base, id: 'h-run', name: 'Morning run', icon: '🏃', time: 'Morning', owner: 'A', weeklyTarget: 3 },
-    { ...base, id: 'h-read', name: 'Read 20 pages', icon: '📖', time: 'Evening', owner: 'A' },
-    { ...base, id: 'h-yoga', name: 'Yoga', icon: '🧘', time: 'Morning', owner: 'S' },
+    { ...base, id: 'h-dinner', name: NAMES.dinner, icon: '🍳', time: 'Evening', owner: 'both', requireProof: true },
+    { ...base, id: 'h-run', name: NAMES.run, icon: '🏃', time: 'Morning', owner: 'A', weeklyTarget: 3 },
+    { ...base, id: 'h-read', name: NAMES.read, icon: '📖', time: 'Evening', owner: 'A' },
+    { ...base, id: 'h-yoga', name: NAMES.yoga, icon: '🧘', time: 'Morning', owner: 'S' },
   ];
 
   const completions: Completions = {};
@@ -48,7 +53,7 @@ export function seedDemo() {
   mark(t, 'h-yoga', 'S');
   const proofs: Proofs = { [t]: { 'h-dinner': { S: { id: 'p1', path: 'demo/dinner.jpg', status: 'pending' } } } };
 
-  useSettingsStore.setState({ language: 'en', notificationsPrompted: true, weekStartsOn: 1 });
+  useSettingsStore.setState({ language: LANG, notificationsPrompted: true, weekStartsOn: 1 });
   useAuthStore.setState({
     status: 'signedIn',
     // Only the id is ever read; this never reaches a network call.
