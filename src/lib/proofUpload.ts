@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { decode } from 'base64-arraybuffer';
 import { supabase, logError } from './supabase';
+import { unmirrorFrontCamera } from './mirrorFix';
 
 // Proof-of-work photos: the person completing a habit that requires proof attaches one, and their
 // partner validates it. Same upload approach as avatars (see avatarUpload.ts): ask the picker for
@@ -50,10 +51,10 @@ export async function pickProof(userId: string, habitId: string, source: ProofSo
       let perm = await ImagePicker.getCameraPermissionsAsync();
       if (!perm.granted && perm.canAskAgain) perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) return { error: 'permission' };
-      const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
+      const result = await ImagePicker.launchCameraAsync({ ...PICKER_OPTIONS, exif: true });
       if (result.canceled || !result.assets[0]) return { cancelled: true };
       onPicked?.();
-      return upload(userId, habitId, result.assets[0]);
+      return upload(userId, habitId, await unmirrorFrontCamera(result.assets[0], PICKER_OPTIONS.quality ?? 0.5));
     }
     // The system photo picker needs no permission to launch.
     const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);

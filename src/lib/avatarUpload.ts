@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { decode } from 'base64-arraybuffer';
 import { supabase, logError } from './supabase';
+import { unmirrorFrontCamera } from './mirrorFix';
 
 export type PickResult =
   | { path: string; url: string }
@@ -72,9 +73,9 @@ export async function pickAvatarFromCamera(userId: string): Promise<PickResult> 
   let perm = await ImagePicker.getCameraPermissionsAsync();
   if (!perm.granted && perm.canAskAgain) perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) return { error: 'permission' };
-  const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
+  const result = await ImagePicker.launchCameraAsync({ ...PICKER_OPTIONS, exif: true });
   if (result.canceled || !result.assets[0]) return { cancelled: true };
-  return uploadAsset(userId, result.assets[0]);
+  return uploadAsset(userId, await unmirrorFrontCamera(result.assets[0], PICKER_OPTIONS.quality ?? 0.5));
 }
 
 /** Best-effort cleanup; never blocks the caller on failure. */
