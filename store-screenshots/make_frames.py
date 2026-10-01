@@ -24,24 +24,34 @@ SUB = FONTS / "nunito/600SemiBold/Nunito_600SemiBold.ttf"
 #   sheet: the capture is an iOS sheet, so the dimmed screen above it is repainted as page background
 #   bleed: a larger device that runs off the bottom edge (for screens with empty space at the bottom)
 COPY = {
-    "en": [
-        ("Build habits, together", "Your shared routine, at a glance."),
-        ("A routine that fits your week", "Exact days, or a few times a week."),
-        ("Proof it happened", "Attach a photo. Your partner confirms it."),
-        ("Celebrate every win", "Earn badges as you keep showing up."),
-        ("Watch your streaks grow", "Clear stats show what's working."),
-    ],
-    "es": [
-        ("Construyan hábitos, juntos", "Su rutina compartida, de un vistazo."),
-        ("Una rutina a tu medida", "Días fijos, o unas veces por semana."),
-        ("Prueba de que lo hiciste", "Subí una foto. Tu pareja la confirma."),
-        ("Celebrá cada logro", "Ganá insignias mientras seguís firme."),
-        ("Mirá crecer tus rachas", "Estadísticas claras de lo que funciona."),
-    ],
+    "en": {
+        "01-home.png": ("Build habits, together", "Your shared routine, at a glance."),
+        "02-add-weekly.png": ("A routine that fits your week", "Exact days, or a few times a week."),
+        "03-add-shared-proof.png": ("Proof it happened", "Attach a photo. Your partner confirms it."),
+        "06-proof-review.png": ("Approve with a tap", "Check the photo, then approve or reject."),
+        "04-achievements.png": ("Celebrate every win", "Earn badges as you keep showing up."),
+        "05-stats.png": ("Watch your streaks grow", "Clear stats show what's working."),
+    },
+    "es": {
+        "01-home.png": ("Construyan hábitos, juntos", "Su rutina compartida, de un vistazo."),
+        "02-add-weekly.png": ("Una rutina a tu medida", "Días fijos, o unas veces por semana."),
+        "03-add-shared-proof.png": ("Prueba de que lo hiciste", "Subí una foto. Tu pareja la confirma."),
+        "06-proof-review.png": ("Aprobá con un toque", "Mirá la foto y aprobala o rechazala."),
+        "04-achievements.png": ("Celebrá cada logro", "Ganá insignias mientras seguís firme."),
+        "05-stats.png": ("Mirá crecer tus rachas", "Estadísticas claras de lo que funciona."),
+    },
 }[LANG]
-_FILES = ["01-home.png", "02-add-weekly.png", "03-add-shared-proof.png", "04-achievements.png", "05-stats.png"]
-_STYLE = [("green", {}), ("cream", {"sheet": True}), ("green", {"sheet": True}), ("cream", {}), ("green", {"sheet": True, "bleed": True})]
-SLIDES = [(f, h, sub, st, o) for f, (h, sub), (st, o) in zip(_FILES, COPY, _STYLE)]
+# Slide order, with background style and options. The raw names keep their capture order; output files are
+# numbered by position here.
+_ORDER = [
+    ("01-home.png", "green", {}),
+    ("02-add-weekly.png", "cream", {"sheet": True}),
+    ("03-add-shared-proof.png", "green", {"sheet": True}),
+    ("06-proof-review.png", "cream", {}),
+    ("04-achievements.png", "green", {}),
+    ("05-stats.png", "cream", {"sheet": True, "bleed": True}),
+]
+SLIDES = [(f, *COPY[f], st, o) for f, st, o in _ORDER]
 
 
 def repaint_dimmed_top(im, rows=310):
@@ -159,6 +169,8 @@ def build(file, head, sub, style, opts):
 
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
+    for old in OUT.glob("*.png"):
+        old.unlink()  # numbering depends on slide order, so drop stale files
     for i, (file, head, sub, style, opts) in enumerate(SLIDES, 1):
         out = OUT / f"{i:02d}-{Path(file).stem.split('-', 1)[1]}.png"
         build(file, head, sub, style, opts).save(out)

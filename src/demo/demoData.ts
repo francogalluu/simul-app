@@ -11,9 +11,13 @@ import { EVERY_DAY } from '@/lib/weekdays';
 export const DEMO = process.env.EXPO_PUBLIC_DEMO === '1';
 /** EXPO_PUBLIC_DEMO_LANG=es shows the Spanish demo (UI and habit names). */
 const LANG = process.env.EXPO_PUBLIC_DEMO_LANG === 'es' ? 'es' : 'en';
+/** EXPO_PUBLIC_DEMO_SCENE=proof: the shared habit with a pending photo is "Read 20 pages", and the photo is bundled. */
+const PROOF_SCENE = process.env.EXPO_PUBLIC_DEMO_SCENE === 'proof';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+export const DEMO_PROOF_IMAGE = require('../../assets/demo/reading.png');
 const NAMES = LANG === 'es'
-  ? { dinner: 'Cocinar juntos', run: 'Correr por la mañana', read: 'Leer 20 páginas', yoga: 'Yoga' }
-  : { dinner: 'Cook dinner together', run: 'Morning run', read: 'Read 20 pages', yoga: 'Yoga' };
+  ? { dinner: 'Cocinar juntos', run: 'Correr por la mañana', read: 'Leer 20 páginas', yoga: 'Yoga', meditate: 'Meditar' }
+  : { dinner: 'Cook dinner together', run: 'Morning run', read: 'Read 20 pages', yoga: 'Yoga', meditate: 'Meditate' };
 
 const HISTORY_DAYS = 60;
 /** Days (counted back from today) that Thomas skipped reading, so the stats chart isn't a flat line. */
@@ -24,15 +28,20 @@ export function seedDemo() {
   const start = addDays(t, -HISTORY_DAYS);
 
   const members: Member[] = [
-    { id: 'm1', userId: 'demo-thomas', displayName: 'Thomas', color: '#6F9BC7', avatarPath: null, joinedAt: '2026-01-01T00:00:00Z' },
-    { id: 'm2', userId: 'demo-emily', displayName: 'Emily', color: '#D9739E', avatarPath: null, joinedAt: '2026-01-02T00:00:00Z' },
+    // In the proof scene the photo is of a man, so the signed-in person (who reviews it) is Emily.
+    { id: 'm1', userId: 'demo-thomas', displayName: PROOF_SCENE ? 'Emily' : 'Thomas', color: PROOF_SCENE ? '#D9739E' : '#6F9BC7', avatarPath: null, joinedAt: '2026-01-01T00:00:00Z' },
+    { id: 'm2', userId: 'demo-emily', displayName: PROOF_SCENE ? 'Thomas' : 'Emily', color: PROOF_SCENE ? '#6F9BC7' : '#D9739E', avatarPath: null, joinedAt: '2026-01-02T00:00:00Z' },
   ];
 
   const base = { status: 'active' as const, createdAt: start, days: EVERY_DAY, weeklyTarget: null, pauses: [], requireProof: false };
   const habits: Habit[] = [
-    { ...base, id: 'h-dinner', name: NAMES.dinner, icon: '🍳', time: 'Evening', owner: 'both', requireProof: true },
+    PROOF_SCENE
+      ? { ...base, id: 'h-dinner', name: NAMES.read, icon: '📖', time: 'Evening', owner: 'both' as const, requireProof: true }
+      : { ...base, id: 'h-dinner', name: NAMES.dinner, icon: '🍳', time: 'Evening', owner: 'both' as const, requireProof: true },
     { ...base, id: 'h-run', name: NAMES.run, icon: '🏃', time: 'Morning', owner: 'A', weeklyTarget: 3 },
-    { ...base, id: 'h-read', name: NAMES.read, icon: '📖', time: 'Evening', owner: 'A' },
+    PROOF_SCENE
+      ? { ...base, id: 'h-read', name: NAMES.meditate, icon: '🧘', time: 'Evening', owner: 'A' as const }
+      : { ...base, id: 'h-read', name: NAMES.read, icon: '📖', time: 'Evening', owner: 'A' as const },
     { ...base, id: 'h-yoga', name: NAMES.yoga, icon: '🧘', time: 'Morning', owner: 'S' },
   ];
 

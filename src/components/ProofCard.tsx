@@ -3,6 +3,7 @@ import { View, Image, StyleSheet } from 'react-native';
 import { Text } from '@/components/AppText';
 import { useKindTranslation } from '@/lib/kind';
 import { proofPublicUrl } from '@/lib/proofUpload';
+import { DEMO, DEMO_PROOF_IMAGE } from '@/demo/demoData';
 import { NativeButton } from '@/components/NativeControls';
 import { S, fonts, cardShadow } from '@/lib/simulTheme';
 import type { Proof } from '@/store/tasksStore';
@@ -25,9 +26,17 @@ export function ProofCard({
 }) {
   const { t } = useKindTranslation();
   const pending = proof.status === 'pending';
+  const [demoWidth, setDemoWidth] = React.useState(300);
   return (
     <View style={styles.card}>
-      <Image source={{ uri: proofPublicUrl(proof.path) }} style={styles.photo} resizeMode="cover" accessibilityIgnoresInvertColors />
+      {DEMO ? (
+        // A bundled image reports its own pixel size to layout and ignores the 4:3 ratio, so size it from the measured card width.
+        <View style={[styles.photo, { overflow: 'hidden' }]} onLayout={(e) => setDemoWidth(e.nativeEvent.layout.width)}>
+          <Image source={DEMO_PROOF_IMAGE} style={{ width: demoWidth, height: (demoWidth * 3) / 4 }} resizeMode="cover" accessibilityIgnoresInvertColors />
+        </View>
+      ) : (
+        <Image source={{ uri: proofPublicUrl(proof.path) }} style={styles.photo} resizeMode="cover" accessibilityIgnoresInvertColors />
+      )}
       <View style={styles.body}>
         <View style={styles.textCol}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
