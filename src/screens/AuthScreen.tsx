@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Linking, Pressable } from 'react-native';
 import { Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,10 @@ import { TextField, PrimaryButton, ErrorText } from '@/components/FormControls';
 import type { NativeTextFieldHandle } from '@/components/NativeControls';
 
 const RESEND_SECONDS = 60;
+/** Supabase's email code length (Auth → Providers → Email, default 6). */
+const CODE_LENGTH = 6;
+/** Set EXPO_PUBLIC_PRIVACY_URL to show the privacy policy link under the form. */
+const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL;
 
 /** Passwordless sign-in: email → one-time code. New emails get an account automatically. */
 export default function AuthScreen() {
@@ -84,10 +88,11 @@ export default function AuthScreen() {
     }
   };
 
-  const submitCode = async () => {
+  const submitCode = async (value: string = code) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
-    const res = await verifyCode(email, code);
+    const res = await verifyCode(email, value);
     // On success the auth listener swaps the whole navigator, so don't touch state.
     if (res.error) {
       setBusy(false);
@@ -147,17 +152,23 @@ export default function AuthScreen() {
                 ref={codeRef}
                 label={t('auth.codeLabel')}
                 value={code}
-                onChangeText={(v) => { setCode(v.replace(/\D/g, '').slice(0, 10)); setError(null); }}
+                onChangeText={(v) => {
+                  const next = v.replace(/\D/g, '').slice(0, 10);
+                  setCode(next);
+                  setError(null);
+                  // Submit as soon as the full code is in (typed, pasted or filled from the keyboard suggestion).
+                  if (next.length === CODE_LENGTH) void submitCode(next);
+                }}
                 placeholder={t('auth.codePlaceholder')}
                 keyboardType="number-pad"
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
                 maxLength={10}
                 code
-                onSubmitEditing={submitCode}
+                onSubmitEditing={() => void submitCode()}
               />
               <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
-              <PrimaryButton label={t('auth.verify')} onPress={submitCode} loading={busy} disabled={code.length < 6} />
+              <PrimaryButton label={t('auth.verify')} onPress={() => void submitCode()} loading={busy} disabled={code.length < CODE_LENGTH} />
               <PrimaryButton
                 variant="link"
                 label={cooldown > 0 ? t('auth.resendIn', { seconds: cooldown }) : t('auth.resend')}
@@ -172,6 +183,11 @@ export default function AuthScreen() {
               />
             </View>
           )}
+          {PRIVACY_URL ? (
+            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(PRIVACY_URL)} hitSlop={10} style={styles.legal}>
+              <Text style={styles.legalText}>{t('auth.privacy')}</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -220,6 +236,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: S.tertiary,
     textAlign: 'center',
+  },
+  legal: {
+    alignSelf: 'center',
+    marginTop: 28,
+  },
+  legalText: {
+    fontSize: 13,
+    color: S.tertiary,
+    textDecorationLine: 'underline',
   },
   hint: {
     fontSize: 13,

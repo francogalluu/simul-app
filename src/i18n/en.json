@@ -78,7 +78,8 @@
     "changeEmail": "Use a different email",
     "codeLabel": "Code",
     "linkSentTo": "We sent a sign-in link to {{email}}. Open it on this phone.",
-    "codeFallback": "If your email has a code instead, enter it below."
+    "codeFallback": "If your email has a code instead, enter it below.",
+    "privacy": "Privacy Policy"
   },
   "onboarding": {
     "title": "Welcome to Simul",

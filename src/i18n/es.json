@@ -78,6 +78,7 @@
     "changeEmail": "Usar otro email",
     "codeLabel": "Código",
     "linkSentTo": "Te mandamos un link para entrar a {{email}}. Abrilo en este teléfono.",
+    "privacy": "Política de privacidad",
     "codeFallback": "Si tu email trae un código, ingresalo abajo."
   },
   "onboarding": {
