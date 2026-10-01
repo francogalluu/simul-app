@@ -69,7 +69,7 @@
     "emailLabel": "Email",
     "emailPlaceholder": "vos@ejemplo.com",
     "sendCode": "Continuar",
-    "noPasswords": "Sin contraseñas. Te mandamos un link por email.",
+    "noPasswords": "Sin contraseñas. Te mandamos un código por email.",
     "codeTitle": "Revisá tu email",
     "codePlaceholder": "123456",
     "verify": "Entrar",
@@ -77,9 +77,9 @@
     "resendIn": "Reenviar en {{seconds}}s",
     "changeEmail": "Usar otro email",
     "codeLabel": "Código",
-    "linkSentTo": "Te mandamos un link para entrar a {{email}}. Abrilo en este teléfono.",
+    "linkSentTo": "Te mandamos un código de 6 dígitos a {{email}}.",
     "privacy": "Política de privacidad",
-    "codeFallback": "Si tu email trae un código, ingresalo abajo."
+    "codeFallback": "Ingresalo abajo. Puede tardar un minuto, revisá también el spam."
   },
   "onboarding": {
     "title": "Bienvenido a Simul",

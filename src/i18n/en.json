@@ -69,7 +69,7 @@
     "emailLabel": "Email",
     "emailPlaceholder": "you@example.com",
     "sendCode": "Continue",
-    "noPasswords": "No passwords. We'll email you a sign-in link.",
+    "noPasswords": "No passwords. We'll email you a sign-in code.",
     "codeTitle": "Check your email",
     "codePlaceholder": "123456",
     "verify": "Sign in",
@@ -77,8 +77,8 @@
     "resendIn": "Resend in {{seconds}}s",
     "changeEmail": "Use a different email",
     "codeLabel": "Code",
-    "linkSentTo": "We sent a sign-in link to {{email}}. Open it on this phone.",
-    "codeFallback": "If your email has a code instead, enter it below.",
+    "linkSentTo": "We sent a 6-digit code to {{email}}.",
+    "codeFallback": "Enter it below. It can take a minute to arrive, so check spam too.",
     "privacy": "Privacy Policy"
   },
   "onboarding": {
