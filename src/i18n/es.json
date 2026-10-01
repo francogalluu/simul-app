@@ -79,6 +79,7 @@
     "codeLabel": "Código",
     "linkSentTo": "Te mandamos un código de 6 dígitos a {{email}}.",
     "privacy": "Política de privacidad",
+    "appleOnly": "Iniciar sesión con Apple no está disponible en este dispositivo. Iniciá sesión en iCloud en Ajustes y probá de nuevo.",
     "codeFallback": "Ingresalo abajo. Puede tardar un minuto, revisá también el spam."
   },
   "onboarding": {

@@ -79,7 +79,8 @@
     "codeLabel": "Code",
     "linkSentTo": "We sent a 6-digit code to {{email}}.",
     "codeFallback": "Enter it below. It can take a minute to arrive, so check spam too.",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "appleOnly": "Sign in with Apple isn't available on this device. Sign in to iCloud in Settings and try again."
   },
   "onboarding": {
     "title": "Welcome to Simul",

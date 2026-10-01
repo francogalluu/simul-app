@@ -16,6 +16,11 @@ const RESEND_SECONDS = 60;
 /** Supabase's email code length (Auth → Providers → Email, default 6). */
 const CODE_LENGTH = 6;
 /** Set EXPO_PUBLIC_PRIVACY_URL to show the privacy policy link under the form. */
+/**
+ * Sign in with Apple is the only login in release builds. The email-code flow below is kept (and works) but hidden;
+ * set EXPO_PUBLIC_EMAIL_LOGIN=1 to show it again. It needs custom SMTP and a code-only email template in Supabase first.
+ */
+const EMAIL_LOGIN = process.env.EXPO_PUBLIC_EMAIL_LOGIN === '1';
 const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL;
 
 /** Passwordless sign-in: email → one-time code. New emails get an account automatically. */
@@ -122,26 +127,34 @@ export default function AuthScreen() {
                     style={[styles.appleButton, busy && { opacity: 0.5 }]}
                     onPress={busy ? () => {} : appleSignIn}
                   />
-                  <Text style={styles.or}>{t('auth.or')}</Text>
+                  {EMAIL_LOGIN ? <Text style={styles.or}>{t('auth.or')}</Text> : null}
                 </>
-              ) : null}
-              <TextField
-                label={t('auth.emailLabel')}
-                value={email}
-                onChangeText={(v) => { setEmail(v); setError(null); }}
-                placeholder={t('auth.emailPlaceholder')}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
-                keyboardType="email-address"
-                returnKeyType="send"
-                maxLength={254}
-                onSubmitEditing={requestCode}
-              />
-              <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
-              <PrimaryButton label={t('auth.sendCode')} onPress={requestCode} loading={busy} disabled={!email.trim()} />
-              <Text style={styles.hint}>{t('auth.noPasswords')}</Text>
+              ) : EMAIL_LOGIN ? null : (
+                <Text style={styles.hint}>{t('auth.appleOnly')}</Text>
+              )}
+              {EMAIL_LOGIN ? (
+                <>
+                  <TextField
+                    label={t('auth.emailLabel')}
+                    value={email}
+                    onChangeText={(v) => { setEmail(v); setError(null); }}
+                    placeholder={t('auth.emailPlaceholder')}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    keyboardType="email-address"
+                    returnKeyType="send"
+                    maxLength={254}
+                    onSubmitEditing={requestCode}
+                  />
+                  <ErrorText message={error ?? (linkError ? errorMessage(linkError) : null)} />
+                  <PrimaryButton label={t('auth.sendCode')} onPress={requestCode} loading={busy} disabled={!email.trim()} />
+                  <Text style={styles.hint}>{t('auth.noPasswords')}</Text>
+                </>
+              ) : (
+                <ErrorText message={error} />
+              )}
               {__DEV__ ? <PrimaryButton variant="link" label="Dev sign in" onPress={devSignIn} disabled={busy} /> : null}
             </View>
           ) : (
