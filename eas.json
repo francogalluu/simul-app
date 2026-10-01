@@ -12,9 +12,16 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_PRIVACY_URL": "https://groovy-kicker-0d3.notion.site/Simul-Privacy-Policy-3ecf999e652880289edecd05cd9a0ffa"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_PRIVACY_URL": "https://groovy-kicker-0d3.notion.site/Simul-Privacy-Policy-3ecf999e652880289edecd05cd9a0ffa"
+      }
+    }
   },
   "submit": {
     "production": {
