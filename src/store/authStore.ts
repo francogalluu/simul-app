@@ -23,6 +23,13 @@ interface AuthState {
   signInWithApple: () => Promise<{ error?: 'canceled' | 'network' | 'unknown' }>;
   /** Dev-only: password sign-in with the account in EXPO_PUBLIC_DEV_EMAIL / EXPO_PUBLIC_DEV_PASSWORD. */
   signInDev: () => Promise<{ error?: 'unconfigured' | 'unknown' }>;
+  /**
+   * App Store reviewer access: password sign-in with EXPO_PUBLIC_REVIEWER_EMAIL /
+   * EXPO_PUBLIC_REVIEWER_PASSWORD. Unlike signInDev, this ships in production builds —
+   * Sign in with Apple has no equivalent of a pre-paired demo account App Review can use.
+   * Only visible when EXPO_PUBLIC_REVIEWER_LOGIN=1 (see AuthScreen).
+   */
+  signInReviewer: () => Promise<{ error?: 'unconfigured' | 'unknown' }>;
   signOut: () => Promise<void>;
 }
 
@@ -183,6 +190,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) return {};
     logError('auth.dev', error);
+    return { error: 'unknown' };
+  },
+
+  signInReviewer: async () => {
+    const email = process.env.EXPO_PUBLIC_REVIEWER_EMAIL;
+    const password = process.env.EXPO_PUBLIC_REVIEWER_PASSWORD;
+    if (!email || !password) return { error: 'unconfigured' };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) return {};
+    logError('auth.reviewer', error);
     return { error: 'unknown' };
   },
 

@@ -22,6 +22,8 @@ const CODE_LENGTH = 6;
  */
 const EMAIL_LOGIN = process.env.EXPO_PUBLIC_EMAIL_LOGIN === '1';
 const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL;
+/** Shows a password sign-in for the seeded App Store demo account (EXPO_PUBLIC_REVIEWER_EMAIL/PASSWORD) — ships in production builds, unlike the __DEV__-only button below. */
+const REVIEWER_LOGIN = process.env.EXPO_PUBLIC_REVIEWER_LOGIN === '1';
 
 /** Passwordless sign-in: email → one-time code. New emails get an account automatically. */
 export default function AuthScreen() {
@@ -30,6 +32,7 @@ export default function AuthScreen() {
   const verifyCode = useAuthStore((s) => s.verifyCode);
   const signInWithApple = useAuthStore((s) => s.signInWithApple);
   const signInDev = useAuthStore((s) => s.signInDev);
+  const signInReviewer = useAuthStore((s) => s.signInReviewer);
   const linkError = useAuthStore((s) => s.linkError);
   const clearLinkError = useAuthStore((s) => s.clearLinkError);
 
@@ -90,6 +93,16 @@ export default function AuthScreen() {
     if (res.error) {
       setBusy(false);
       setError(res.error === 'unconfigured' ? 'Set EXPO_PUBLIC_DEV_EMAIL and EXPO_PUBLIC_DEV_PASSWORD in .env' : 'Dev sign-in failed');
+    }
+  };
+
+  const reviewerSignIn = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await signInReviewer();
+    if (res.error) {
+      setBusy(false);
+      setError('Reviewer sign-in is not configured.');
     }
   };
 
@@ -155,6 +168,9 @@ export default function AuthScreen() {
               ) : (
                 <ErrorText message={error} />
               )}
+              {REVIEWER_LOGIN ? (
+                <PrimaryButton variant="link" label={t('auth.reviewerSignIn')} onPress={reviewerSignIn} disabled={busy} />
+              ) : null}
               {__DEV__ ? <PrimaryButton variant="link" label="Dev sign in" onPress={devSignIn} disabled={busy} /> : null}
             </View>
           ) : (
