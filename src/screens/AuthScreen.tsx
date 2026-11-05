@@ -43,7 +43,16 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const [reviewerRevealed, setReviewerRevealed] = useState(false);
+  const logoTaps = useRef(0);
   const codeRef = useRef<NativeTextFieldHandle>(null);
+
+  // Tap the wordmark 5x to reveal the reviewer sign-in — keeps it off the screen for real users.
+  const onLogoTap = () => {
+    if (!REVIEWER_LOGIN || reviewerRevealed) return;
+    logoTaps.current += 1;
+    if (logoTaps.current >= 5) setReviewerRevealed(true);
+  };
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -125,7 +134,9 @@ export default function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Text style={styles.logo}>Simul</Text>
+            <Pressable onPress={onLogoTap} hitSlop={12}>
+              <Text style={styles.logo}>Simul</Text>
+            </Pressable>
             <Text style={styles.tagline}>{step === 'email' ? t('auth.tagline') : t('auth.codeTitle')}</Text>
           </View>
 
@@ -168,7 +179,7 @@ export default function AuthScreen() {
               ) : (
                 <ErrorText message={error} />
               )}
-              {REVIEWER_LOGIN ? (
+              {REVIEWER_LOGIN && reviewerRevealed ? (
                 <PrimaryButton variant="link" label={t('auth.reviewerSignIn')} onPress={reviewerSignIn} disabled={busy} />
               ) : null}
               {__DEV__ ? <PrimaryButton variant="link" label="Dev sign in" onPress={devSignIn} disabled={busy} /> : null}
