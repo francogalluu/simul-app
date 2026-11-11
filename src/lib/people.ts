@@ -4,6 +4,7 @@ import { S } from './simulTheme';
 import { avatarPublicUrl } from './avatarUpload';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useHouseholdKind, kindContext } from './kind';
+import { demoAvatarUri } from '@/demo/demoData';
 
 /**
  * The two people in the household, as slots. 'A' is whoever created the
@@ -38,7 +39,8 @@ const info = (
     name: clean,
     initial: Array.from(clean)[0]?.toUpperCase() ?? '?',
     color: member?.color ?? FALLBACK_COLOR[p],
-    avatarUrl: member?.avatarPath ? avatarPublicUrl(member.avatarPath) : null,
+    // Demo mode (store screenshots / promo captures) uses bundled photos instead of Supabase storage.
+    avatarUrl: member?.avatarPath ? demoAvatarUri(member.avatarPath) ?? avatarPublicUrl(member.avatarPath) : null,
     joined: Boolean(member),
   };
 };
