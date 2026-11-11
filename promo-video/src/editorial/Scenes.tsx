@@ -236,14 +236,14 @@ export const Study: React.FC = () => {
   const c = useEditorialCopy();
   if (f < TE.s4 - XF || f >= TE.s5 + XF) return null;
   const t0 = TE.s4;
-  const rowAt = [t0 + 44, t0 + 104];
+  const rowAt = [t0 + 36, t0 + 96];
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity(f, TE.s4 - XF, TE.s5) }}>
       <div style={{ position: 'absolute', left: SAFE.left, top: 138 }}>
-        <MaskLine f={f} at={t0 + 4} size={c.studySize}>{c.study[0]}</MaskLine>
-        <MaskLine f={f} at={t0 + 11} size={c.studySize}>{c.study[1]}</MaskLine>
+        <MaskLine f={f} at={t0 - 4} size={c.studySize}>{c.study[0]}</MaskLine>
+        <MaskLine f={f} at={t0 + 3} size={c.studySize}>{c.study[1]}</MaskLine>
       </div>
-      <div style={{ position: 'absolute', left: SAFE.left, top: 372, height: 2, width: 120 * ramp(f, t0 + 26, t0 + 46), background: C.ink }} />
+      <div style={{ position: 'absolute', left: SAFE.left, top: 372, height: 2, width: 120 * ramp(f, t0 + 18, t0 + 38), background: C.ink }} />
       {c.rows.map((row, r) => {
         const at = rowAt[r];
         const lastFill = at + 14 + (row.filled - 1) * 4 + 8;
@@ -261,7 +261,7 @@ export const Study: React.FC = () => {
           </div>
         );
       })}
-      <div style={{ position: 'absolute', left: SAFE.left, top: 816, ...label(22, 600), ...fadeUp(f, t0 + 150, 10) }}>{c.source}</div>
+      <div style={{ position: 'absolute', left: SAFE.left, top: 816, ...label(22, 600), ...fadeUp(f, t0 + 142, 10) }}>{c.source}</div>
     </AbsoluteFill>
   );
 };
@@ -272,7 +272,7 @@ export const Closing: React.FC = () => {
   const c = useEditorialCopy();
   if (f < TE.s5 - XF) return null;
   const t0 = TE.s5;
-  const icon = ramp(f, t0 + 2, t0 + 20, EASE_OUT);
+  const icon = ramp(f, t0 - 6, t0 + 12, EASE_OUT);
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity(f, TE.s5 - XF, TE.end, true, false) }}>
       <Img
@@ -280,10 +280,10 @@ export const Closing: React.FC = () => {
         style={{ position: 'absolute', left: 960 - 80, top: 232, width: 160, height: 160, borderRadius: 36, opacity: icon, transform: `scale(${lerp(0.94, 1, icon)})`, boxShadow: `0 0 0 1.5px ${C.line}, 0 20px 36px -20px rgba(38,32,25,0.28)` }}
       />
       <div style={{ position: 'absolute', left: 0, right: 0, top: 418 }}>
-        <MaskLine f={f} at={t0 + 14} size={118} align="center">{c.wordmark}</MaskLine>
+        <MaskLine f={f} at={t0 + 6} size={118} align="center">{c.wordmark}</MaskLine>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 590, textAlign: 'center', ...label(40, 700), ...fadeUp(f, t0 + 30) }}>{c.tagline}</div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 700, display: 'flex', justifyContent: 'center', ...fadeUp(f, t0 + 46) }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 590, textAlign: 'center', ...label(40, 700), ...fadeUp(f, t0 + 22) }}>{c.tagline}</div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 700, display: 'flex', justifyContent: 'center', ...fadeUp(f, t0 + 38) }}>
         <div style={{ background: C.ink, color: C.bg, fontFamily: sans, fontWeight: 800, fontSize: 30, height: 76, lineHeight: '76px', padding: '0 44px', borderRadius: 999, letterSpacing: '0.005em' }}>{c.cta}</div>
       </div>
     </AbsoluteFill>
