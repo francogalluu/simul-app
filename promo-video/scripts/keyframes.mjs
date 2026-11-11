@@ -21,17 +21,32 @@ const KEY = {
   '05-closing': 1180,
 };
 
+// Editorial promo (COMP=SimulEditorial / SimulEditorialES): one or two key frames per scene.
+const KEY_EDITORIAL = {
+  '01-hook': 90,
+  '02-idea': 240,
+  '03a-do-your-habit-a': 310,
+  '03a-do-your-habit-b': 385,
+  '03b-send-a-photo': 500,
+  '03c-partner-approves-a': 550,
+  '03c-partner-approves-b': 620,
+  '04-why-it-works-a': 760,
+  '04-why-it-works-b': 900,
+  '05-closing': 1100,
+};
+
 const [, , outArg, scaleArg, ...frameArgs] = process.argv;
 const outDir = path.resolve(outArg ?? 'out/keyframes');
 const scale = Number(scaleArg ?? 1);
-const jobs = frameArgs.length ? frameArgs.map((f) => [`f${String(f).padStart(4, '0')}`, Number(f)]) : Object.entries(KEY);
+const id = process.env.COMP ?? 'SimulPromo';
+const jobs = frameArgs.length ? frameArgs.map((f) => [`f${String(f).padStart(4, '0')}`, Number(f)]) : Object.entries(id.startsWith('SimulEditorial') ? KEY_EDITORIAL : KEY);
 
 fs.mkdirSync(outDir, { recursive: true });
 const serveUrl = await bundle({ entryPoint: path.resolve('src/index.ts') });
-const id = process.env.COMP ?? 'SimulPromo';
-const composition = await selectComposition({ serveUrl, id });
+
+const composition = await selectComposition({ serveUrl, id, browserExecutable: process.env.BROWSER_EXECUTABLE || undefined });
 for (const [name, frame] of jobs) {
   const output = path.join(outDir, `${name}.${scale < 1 ? 'jpg' : 'png'}`);
-  await renderStill({ composition, serveUrl, frame, output, scale, ...(scale < 1 ? { imageFormat: 'jpeg', jpegQuality: 85 } : { imageFormat: 'png' }) });
+  await renderStill({ composition, serveUrl, frame, output, scale, browserExecutable: process.env.BROWSER_EXECUTABLE || undefined, ...(scale < 1 ? { imageFormat: 'jpeg', jpegQuality: 85 } : { imageFormat: 'png' }) });
   console.log('wrote', output);
 }

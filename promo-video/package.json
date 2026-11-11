@@ -7,7 +7,11 @@
     "render": "remotion render src/index.ts SimulPromo out/simul-promo.mp4 --codec=h264 --crf=18 --audio-bitrate=320k",
     "render:es": "remotion render src/index.ts SimulPromoES out/simul-promo-es.mp4 --codec=h264 --crf=18 --audio-bitrate=320k",
     "stills": "node scripts/keyframes.mjs out/keyframes",
-    "stills:es": "COMP=SimulPromoES node scripts/keyframes.mjs out/keyframes-es"
+    "stills:es": "COMP=SimulPromoES node scripts/keyframes.mjs out/keyframes-es",
+    "editorial:assets": "python3 scripts/make_editorial_assets.py en",
+    "editorial:render": "remotion render src/index.ts SimulEditorial out/simul-editorial-en.mp4 --codec=h264 --crf=18 --audio-bitrate=320k",
+    "editorial:stills": "COMP=SimulEditorial node scripts/keyframes.mjs out/keyframes-editorial-en",
+    "editorial:sheets": "SHEET=EditorialSheet node scripts/sheets.mjs 5 0 1140 en"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.538",
