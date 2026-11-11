@@ -1,0 +1,26 @@
+{
+  "name": "simul-promo-video",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts SimulPromo out/simul-promo.mp4 --codec=h264 --crf=18 --audio-bitrate=320k",
+    "render:es": "remotion render src/index.ts SimulPromoES out/simul-promo-es.mp4 --codec=h264 --crf=18 --audio-bitrate=320k",
+    "stills": "node scripts/keyframes.mjs out/keyframes",
+    "stills:es": "COMP=SimulPromoES node scripts/keyframes.mjs out/keyframes-es"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.538",
+    "@remotion/cli": "4.0.538",
+    "@remotion/google-fonts": "4.0.538",
+    "@remotion/media-utils": "4.0.538",
+    "@remotion/renderer": "4.0.538",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "typescript": "5.8.3"
+  }
+}
